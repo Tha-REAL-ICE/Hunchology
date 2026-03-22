@@ -12,7 +12,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;overflow-x:hidden;font-size:14px}
 .grain{position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E");pointer-events:none;z-index:5000}
-#jarvis{position:fixed;inset:0;background:#000;z-index:9000;display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden}
+#jarvis{position:fixed;inset:0;background:#000;z-index:9000;display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden;pointer-events:none}
 .j-bg-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(200,255,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(200,255,0,0.03) 1px,transparent 1px);background-size:40px 40px;animation:gridFade 5.5s ease forwards}
 @keyframes gridFade{0%{opacity:0}10%{opacity:1}85%{opacity:1}100%{opacity:0}}
 .j-corner{position:absolute;width:28px;height:28px;border-color:rgba(200,255,0,0.3);border-style:solid;animation:cAnim 5.5s ease forwards}
@@ -534,7 +534,16 @@ function runJarvis(){
   const st=setInterval(()=>{if(si<statuses.length){stEl.innerHTML=statuses[si]+'<span class="blink">_</span>';si++;}else clearInterval(st);},580);
   const pick=phrases[Math.floor(Math.random()*phrases.length)];
   setTimeout(()=>{document.getElementById('j-phrase').innerHTML=`<span class="hi">${pick[0]}</span><br/>${pick[1]}`;},2000);
-  setTimeout(()=>{const j=document.getElementById('jarvis');j.style.transition='opacity 0.8s ease';j.style.opacity='0';setTimeout(()=>{j.style.display='none';},800);},5500);
+  setTimeout(()=>{
+    const j=document.getElementById('jarvis');
+    j.style.transition='opacity 0.8s ease';
+    j.style.opacity='0';
+    j.style.pointerEvents='none'; // immediately stop blocking clicks
+    setTimeout(()=>{
+      j.style.display='none';
+      j.style.zIndex='-1'; // belt and suspenders
+    },800);
+  },5500);
 }
 
 function switchTab(tab,btn){
@@ -566,12 +575,17 @@ sb.auth.onAuthStateChange(async(event,session)=>{
   if(session?.user){
     currentUser=session.user;
     document.getElementById('auth-screen').style.display='none';
+    // Show app immediately behind the Jarvis overlay
+    document.getElementById('app-screen').style.display='block';
+    // Jarvis is purely visual — pointer-events:none so app is usable underneath
+    const j=document.getElementById('jarvis');
+    j.style.pointerEvents='none';
     runJarvis();
-    setTimeout(()=>{document.getElementById('app-screen').style.display='block';},300);
     await loadData();updateStats();renderDashRecent();renderChart();renderRules();subscribeSignals();
   } else {
     currentUser=null;
-    document.getElementById('jarvis').style.display='none';
+    const j=document.getElementById('jarvis');
+    j.style.display='none';j.style.zIndex='-1';
     document.getElementById('auth-screen').style.display='flex';
     document.getElementById('app-screen').style.display='none';
     trades=[];customRules=[];signals=[];
