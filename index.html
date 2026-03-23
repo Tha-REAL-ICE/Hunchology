@@ -1,744 +1,993 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<title>Hunchology</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,600;0,700;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-:root{--bg:#080808;--s1:#101010;--s2:#161616;--s3:#1e1e1e;--border:#222;--border2:#2e2e2e;--lime:#c8ff00;--red:#ff3d3d;--blue:#38bdf8;--gold:#f5a623;--text:#ececec;--sub:#777;--muted:#444;--r:6px;--mono:'IBM Plex Mono',monospace;--body:'DM Sans',sans-serif;--display:'Bebas Neue',cursive}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;overflow-x:hidden;font-size:14px}
-.grain{position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E");pointer-events:none;z-index:5000}
-#jarvis{position:fixed;inset:0;background:#000;z-index:9000;display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden;pointer-events:none}
-.j-bg-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(200,255,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(200,255,0,0.03) 1px,transparent 1px);background-size:40px 40px;animation:gridFade 5.5s ease forwards}
-@keyframes gridFade{0%{opacity:0}10%{opacity:1}85%{opacity:1}100%{opacity:0}}
-.j-corner{position:absolute;width:28px;height:28px;border-color:rgba(200,255,0,0.3);border-style:solid;animation:cAnim 5.5s ease forwards}
-.j-corner.tl{top:24px;left:24px;border-width:1px 0 0 1px}.j-corner.tr{top:24px;right:24px;border-width:1px 1px 0 0}
-.j-corner.bl{bottom:24px;left:24px;border-width:0 0 1px 1px}.j-corner.br{bottom:24px;right:24px;border-width:0 1px 1px 0}
-@keyframes cAnim{0%{opacity:0;transform:scale(1.3)}15%{opacity:1;transform:scale(1)}85%{opacity:1}100%{opacity:0}}
-.j-scan-h{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(200,255,0,0.5),transparent);animation:scanH 2.5s ease-in-out 0.4s forwards}
-@keyframes scanH{0%{top:-1px;opacity:0}5%{opacity:1}100%{top:100%;opacity:0.2}}
-.j-content{display:flex;flex-direction:column;align-items:center;gap:0;text-align:center;position:relative;z-index:2}
-.j-eyeline{display:flex;align-items:center;gap:20px;margin-bottom:32px}
-.j-bar-left{height:1px;background:linear-gradient(90deg,transparent,rgba(200,255,0,0.5));width:80px;animation:barExp 0.8s ease 0.3s forwards;transform:scaleX(0);transform-origin:right}
-.j-bar-right{height:1px;background:linear-gradient(90deg,rgba(200,255,0,0.5),transparent);width:80px;animation:barExp 0.8s ease 0.3s forwards;transform:scaleX(0);transform-origin:left}
-@keyframes barExp{to{transform:scaleX(1)}}
-.j-center-dot{width:6px;height:6px;background:var(--lime);border-radius:50%;box-shadow:0 0 16px var(--lime),0 0 40px rgba(200,255,0,0.3);animation:dotP 1.5s ease-in-out infinite}
-@keyframes dotP{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.8);opacity:0.5}}
-.j-sysid{font-family:var(--mono);font-size:8px;color:rgba(200,255,0,0.35);letter-spacing:0.5em;text-transform:uppercase;margin-bottom:6px;opacity:0;animation:fIn 0.4s ease 0.6s forwards}
-.j-greeting{font-family:var(--mono);font-size:11px;color:var(--sub);letter-spacing:0.35em;text-transform:uppercase;margin-bottom:10px;opacity:0;animation:fIn 0.5s ease 0.9s forwards}
-.j-name{font-family:var(--display);font-size:76px;color:var(--red);letter-spacing:0.1em;line-height:1;text-shadow:0 0 60px rgba(255,61,61,0.2),0 0 120px rgba(255,61,61,0.08);opacity:0;animation:nameSlam 0.6s cubic-bezier(0.16,1,0.3,1) 1.1s forwards}
-@keyframes nameSlam{0%{opacity:0;transform:translateY(24px) scale(0.93)}100%{opacity:1;transform:translateY(0) scale(1)}}
-.j-tagline{font-family:var(--mono);font-size:9px;color:rgba(255,61,61,0.5);letter-spacing:0.25em;text-transform:uppercase;margin-top:8px;margin-bottom:30px;opacity:0;animation:fIn 0.5s ease 1.5s forwards}
-.j-status-block{display:flex;flex-direction:column;align-items:center;gap:10px;opacity:0;animation:fIn 0.5s ease 1.7s forwards}
-.j-status-line{font-family:var(--mono);font-size:10px;color:var(--sub);letter-spacing:0.15em;min-height:16px}
-.j-prog-wrap{width:240px;height:1px;background:rgba(255,255,255,0.06);border-radius:1px;overflow:hidden}
-.j-prog{height:100%;background:linear-gradient(90deg,var(--red),var(--lime));width:0%;animation:prog 2.5s cubic-bezier(0.4,0,0.2,1) 1.9s forwards;box-shadow:0 0 8px var(--red)}
-@keyframes prog{0%{width:0%}50%{width:60%}80%{width:82%}100%{width:100%}}
-.j-phrase-block{margin-top:24px;opacity:0;animation:fIn 0.6s ease 2.2s forwards;max-width:380px;padding:0 20px}
-.j-phrase{font-family:var(--mono);font-size:9px;color:rgba(255,61,61,0.6);letter-spacing:0.08em;line-height:2.2;text-align:center}
-.j-phrase .hi{color:var(--red);font-weight:700;font-size:10px}
-@keyframes fIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.j-bottom{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:8px;color:rgba(200,255,0,0.15);letter-spacing:0.3em;text-transform:uppercase;animation:fIn 0.5s ease 2.4s both}
-.blink{animation:blink 0.7s step-end infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-#auth-screen{display:none;align-items:center;justify-content:center;min-height:100vh;padding:20px}
-.auth-box{width:100%;max-width:400px}
-.auth-logo{font-family:var(--display);font-size:52px;color:var(--red);letter-spacing:0.06em;line-height:1;margin-bottom:4px}
-.auth-tag{font-family:var(--mono);font-size:9px;color:var(--sub);letter-spacing:0.25em;text-transform:uppercase;margin-bottom:40px}
-.auth-tabs{display:flex;margin-bottom:28px;border-bottom:1px solid var(--border)}
-.auth-tab{padding:10px 20px;font-family:var(--mono);font-size:10px;letter-spacing:0.15em;text-transform:uppercase;background:none;border:none;color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.2s}
-.auth-tab.active{color:var(--red);border-bottom-color:var(--red)}
-.auth-form{display:flex;flex-direction:column;gap:14px}
-.auth-fg{display:flex;flex-direction:column;gap:6px}
-.auth-fg label{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:0.2em;color:var(--sub)}
-.auth-fg input{background:var(--s2);border:1px solid var(--border);color:var(--text);padding:12px 14px;font-family:var(--mono);font-size:13px;border-radius:var(--r);outline:none;transition:border-color 0.2s;width:100%}
-.auth-fg input:focus{border-color:var(--red)}
-.auth-btn{padding:13px;background:var(--red);color:#fff;border:none;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;border-radius:var(--r);transition:all 0.2s;margin-top:6px}
-.auth-btn:hover{background:#ff5555;transform:translateY(-1px)}
-.auth-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
-.auth-msg{font-family:var(--mono);font-size:10px;padding:10px 14px;border-radius:var(--r);display:none}
-.auth-msg.err{color:var(--red);background:rgba(255,61,61,0.08);border:1px solid rgba(255,61,61,0.2)}
-.auth-msg.ok{color:var(--lime);background:rgba(200,255,0,0.08);border:1px solid rgba(200,255,0,0.2)}
-.auth-msg.show{display:block}
-.auth-philosophy{margin-top:32px;padding-top:24px;border-top:1px solid var(--border)}
-.phil-line{font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.9;font-style:italic}
-.phil-line.red{color:rgba(255,61,61,0.45)}
-#app-screen{display:none}
-.app{display:grid;grid-template-columns:220px 1fr;grid-template-rows:auto 1fr;min-height:100vh}
-.topbar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;border-bottom:1px solid var(--border);background:rgba(8,8,8,0.98);backdrop-filter:blur(20px);position:sticky;top:0;z-index:200}
-.brand{display:flex;align-items:baseline;gap:10px}
-.brand-name{font-family:var(--display);font-size:26px;letter-spacing:0.06em;color:var(--red);line-height:1}
-.brand-sub{font-family:var(--mono);font-size:9px;color:var(--sub);letter-spacing:0.2em;text-transform:uppercase}
-.topbar-right{display:flex;align-items:center;gap:20px}
-.topbar-stats{display:flex;gap:20px}
-.ts{display:flex;flex-direction:column;align-items:flex-end}
-.ts-label{font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em}
-.ts-val{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--red)}
-.ts-val.gold{color:var(--gold)}.ts-val.lime{color:var(--lime)}
-.logout-btn{padding:7px 14px;background:none;border:1px solid var(--border);color:var(--sub);font-family:var(--mono);font-size:9px;letter-spacing:0.15em;border-radius:var(--r);cursor:pointer;transition:all 0.2s;text-transform:uppercase}
-.logout-btn:hover{border-color:var(--red);color:var(--red)}
-.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;background:none;border:none}
-.hamburger span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;pointer-events:none}
-.sidebar{grid-row:2;border-right:1px solid var(--border);background:var(--s1);padding:20px 0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;transition:transform 0.3s ease;z-index:100}
-.sb-section{padding:0 16px;margin-bottom:28px}
-.sb-label{font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:0.25em;text-transform:uppercase;margin-bottom:10px;padding:0 4px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r);cursor:pointer;font-size:13px;color:var(--sub);font-weight:500;transition:all 0.15s;border:none;background:none;width:100%;text-align:left}
-.nav-item:hover{background:var(--s2);color:var(--text)}
-.nav-item.active{background:rgba(255,61,61,0.08);color:var(--red)}
-.nav-icon{font-size:15px;width:20px;text-align:center}
-.live-badge{background:var(--red);color:#fff;font-family:var(--mono);font-size:7px;font-weight:700;padding:2px 5px;border-radius:8px;margin-left:auto;animation:lp 2s infinite}
-@keyframes lp{0%,100%{opacity:1}50%{opacity:0.3}}
-.laws-block{margin:0 16px;padding:14px;border:1px solid var(--border);border-radius:var(--r);background:var(--s2)}
-.law{font-size:10px;color:var(--sub);line-height:1.6;margin-bottom:8px;font-style:italic}
-.law:last-child{margin-bottom:0}
-.law strong{color:var(--red);font-style:normal;font-size:8px;text-transform:uppercase;display:block;letter-spacing:0.1em;margin-bottom:2px}
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99}
-.main{grid-row:2;overflow-y:auto;background:var(--bg)}
-.page{display:none;padding:28px}
-.page.active{display:block}
-.page-title{font-family:var(--display);font-size:36px;letter-spacing:0.05em;color:var(--text);margin-bottom:4px}
-.page-sub{font-size:12px;color:var(--sub);margin-bottom:28px;font-family:var(--mono)}
-.sh{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-.sh-title{font-family:var(--mono);font-size:9px;color:var(--sub);text-transform:uppercase;letter-spacing:0.25em;white-space:nowrap}
-.sh-line{flex:1;height:1px;background:var(--border)}
-.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-.stat-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px}
-.sc-label{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:0.2em;color:var(--sub);margin-bottom:6px}
-.sc-val{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--red)}
-.sc-val.lime{color:var(--lime)}.sc-val.gold{color:var(--gold)}
-.philosophy-card{background:var(--s1);border:1px solid var(--border);border-left:2px solid var(--red);border-radius:var(--r);padding:20px;margin-bottom:24px}
-.phil-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.phil-col-title{font-family:var(--mono);font-size:8px;color:var(--red);text-transform:uppercase;letter-spacing:0.25em;margin-bottom:12px}
-.phil-item{font-family:var(--mono);font-size:10px;color:var(--sub);line-height:1.8;display:flex;align-items:flex-start;gap:8px;margin-bottom:2px}
-.phil-item::before{content:'—';color:var(--red);flex-shrink:0}
-.phil-divider{border:none;border-top:1px solid var(--border);margin:16px 0}
-.phil-quote{font-family:var(--display);font-size:22px;color:var(--red);letter-spacing:0.05em;line-height:1.3}
-.phil-quote-small{font-family:var(--mono);font-size:10px;color:var(--sub);margin-top:8px;line-height:1.7}
-.chart-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:24px}
-.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.chart-title{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.2em;color:var(--sub)}
-.chart-legend{display:flex;gap:16px}
-.legend-item{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;color:var(--sub)}
-.legend-dot{width:8px;height:8px;border-radius:50%}
-.chart-wrap{position:relative;height:220px}
-.pair-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:24px}
-.pair-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
-.pair-name{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px}
-.pair-stats{display:flex;flex-direction:column;gap:4px}
-.pair-stat{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px}
-.ps-label{color:var(--sub)}.ps-val{color:var(--text)}
-.pair-wr-bar{height:3px;background:var(--s3);border-radius:3px;margin-top:8px;overflow:hidden}
-.pair-wr-fill{height:100%;border-radius:3px;transition:width 0.6s ease}
-.two-col{display:grid;grid-template-columns:1fr 380px;gap:20px}
-.form-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:24px}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-.form-row.triple{grid-template-columns:1fr 1fr 1fr}
-.form-row.single{grid-template-columns:1fr}
-.fg{display:flex;flex-direction:column;gap:6px}
-label{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:0.2em;color:var(--sub)}
-input,select,textarea{background:var(--s2);border:1px solid var(--border);color:var(--text);padding:10px 12px;font-family:var(--mono);font-size:12px;border-radius:var(--r);outline:none;transition:border-color 0.2s;width:100%;-webkit-appearance:none}
-input:focus,select:focus,textarea:focus{border-color:var(--red)}
-select option{background:var(--s2)}
-textarea{resize:vertical;min-height:72px;line-height:1.5}
-.toggle-group{display:flex;gap:8px;flex-wrap:wrap}
-.tgl{padding:6px 14px;background:var(--s2);border:1px solid var(--border);color:var(--sub);font-family:var(--mono);font-size:10px;border-radius:20px;cursor:pointer;transition:all 0.15s;letter-spacing:0.05em}
-.tgl:hover{border-color:var(--border2);color:var(--text)}
-.tgl.win.on{border-color:var(--lime);color:var(--lime);background:rgba(200,255,0,0.07)}
-.tgl.loss.on{border-color:var(--red);color:var(--red);background:rgba(255,61,61,0.07)}
-.tgl.be.on{border-color:var(--blue);color:var(--blue);background:rgba(56,189,248,0.07)}
-.tgl.emo.on{border-color:var(--gold);color:var(--gold);background:rgba(245,166,35,0.07)}
-.btn-primary{width:100%;padding:13px;background:var(--red);color:#fff;border:none;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;border-radius:var(--r);margin-top:18px;transition:all 0.2s}
-.btn-primary:hover{background:#ff5555;transform:translateY(-1px)}
-.btn-primary:disabled{opacity:0.35;cursor:not-allowed;transform:none}
-.ai-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:16px}
-.ai-idle-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:200px;text-align:center;gap:12px}
-.ai-glyph{width:52px;height:52px;border:1px solid var(--border2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px}
-.ai-idle-text{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.7;max-width:200px}
-.ai-loader{display:none}
-.ai-loader.on{display:flex;flex-direction:column;gap:10px;min-height:80px;justify-content:center}
-.loader-bar{height:1px;background:var(--border);border-radius:1px;overflow:hidden}
-.loader-inner{height:100%;background:var(--red);animation:sweep 1.4s ease-in-out infinite;border-radius:1px}
-@keyframes sweep{0%{width:0%;margin-left:0}50%{width:55%;margin-left:22%}100%{width:0%;margin-left:100%}}
-.loader-label{font-family:var(--mono);font-size:9px;color:var(--sub);letter-spacing:0.1em;text-align:center}
-.ai-result{display:none}
-.ai-result.on{display:block}
-.verdict-badge{display:inline-block;padding:3px 10px;border-radius:2px;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:0.25em;text-transform:uppercase;margin-bottom:12px}
-.vb-good{background:rgba(200,255,0,0.1);color:var(--lime);border:1px solid rgba(200,255,0,0.3)}
-.vb-warn{background:rgba(245,166,35,0.1);color:var(--gold);border:1px solid rgba(245,166,35,0.3)}
-.vb-bad{background:rgba(255,61,61,0.1);color:var(--red);border:1px solid rgba(255,61,61,0.3)}
-.ai-body{font-size:12px;line-height:1.8;color:#ccc;white-space:pre-wrap;font-family:var(--body)}
-.ai-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
-.chip{padding:3px 10px;border:1px solid var(--border2);border-radius:20px;font-family:var(--mono);font-size:8px;color:var(--sub);letter-spacing:0.08em}
-.trade-list{display:flex;flex-direction:column;gap:8px}
-.trade-row{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;cursor:pointer;transition:border-color 0.15s;animation:fadeUp 0.25s ease forwards}
-@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.trade-row:hover{border-color:var(--border2)}
-.tr-outcome{font-family:var(--mono);font-size:10px;font-weight:700;width:42px;text-align:center;padding:3px 0;border-radius:3px}
-.tr-WIN{color:var(--lime);background:rgba(200,255,0,0.07)}
-.tr-LOSS{color:var(--red);background:rgba(255,61,61,0.07)}
-.tr-BE{color:var(--blue);background:rgba(56,189,248,0.07)}
-.tr-info{display:flex;flex-direction:column;gap:3px}
-.tr-pair{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text)}
-.tr-meta{font-family:var(--mono);font-size:9px;color:var(--sub);display:flex;gap:12px;flex-wrap:wrap}
-.tr-right{text-align:right}
-.tr-date{font-family:var(--mono);font-size:9px;color:var(--muted)}
-.tr-disc{font-family:var(--mono);font-size:9px;margin-top:3px}
-.disc-yes{color:var(--lime)}.disc-part{color:var(--gold)}.disc-no{color:var(--red)}
-.trade-expand{display:none;padding:12px 16px 14px;border-top:1px solid var(--border);font-size:11px;color:#999;line-height:1.7;font-family:var(--body);background:var(--s2);border-radius:0 0 var(--r) var(--r)}
-.trade-expand.open{display:block}
-.sig-status-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);margin-bottom:20px;font-family:var(--mono);font-size:10px}
-.sdot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
-.sdot.live{background:var(--red);box-shadow:0 0 8px var(--red);animation:sdp 2s infinite}
-.sdot.wait{background:var(--gold);animation:sdp 2s infinite}
-@keyframes sdp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(1.4)}}
-.stext{color:var(--sub)}.stext span{color:var(--text)}
-.stime{margin-left:auto;color:var(--muted);font-size:9px}
-.active-sig{border:1px solid var(--red);background:linear-gradient(135deg,rgba(255,61,61,0.04),rgba(255,61,61,0.01));border-radius:var(--r);padding:24px;margin-bottom:20px;position:relative;overflow:hidden}
-.active-sig::before{content:'';position:absolute;top:0;left:-100%;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--red),transparent);animation:scanLine 3s linear infinite}
-@keyframes scanLine{to{left:100%}}
-.sig-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
-.sig-pair-block{display:flex;flex-direction:column;gap:4px}
-.sig-pair-name{font-family:var(--display);font-size:42px;color:var(--red);letter-spacing:0.05em;line-height:1}
-.sig-dir-badge{display:inline-block;padding:4px 12px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.2em;border-radius:2px;width:fit-content}
-.dir-long{background:rgba(200,255,0,0.1);color:var(--lime);border:1px solid rgba(200,255,0,0.3)}
-.dir-short{background:rgba(255,61,61,0.1);color:var(--red);border:1px solid rgba(255,61,61,0.3)}
-.sig-meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-.smi{background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:var(--r);padding:12px}
-.smi-label{font-family:var(--mono);font-size:8px;color:var(--sub);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:4px}
-.smi-val{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text)}
-.smi-val.g{color:var(--lime)}.smi-val.r{color:var(--red)}.smi-val.gd{color:var(--gold)}
-.sig-reasoning{background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:var(--r);padding:14px;font-family:var(--mono);font-size:11px;color:#aaa;line-height:1.8;margin-bottom:16px}
-.sig-reasoning strong{color:var(--red);font-size:9px;text-transform:uppercase;letter-spacing:0.15em;display:block;margin-bottom:6px}
-.sig-actions{display:flex;gap:10px}
-.btn-take{flex:1;padding:12px;background:var(--lime);color:#000;border:none;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;border-radius:var(--r);cursor:pointer;transition:all 0.2s}
-.btn-take:hover{background:#d4ff1a}
-.btn-skip{padding:12px 20px;background:none;border:1px solid var(--border);color:var(--sub);font-family:var(--mono);font-size:10px;letter-spacing:0.15em;text-transform:uppercase;border-radius:var(--r);cursor:pointer;transition:all 0.2s}
-.btn-skip:hover{border-color:var(--red);color:var(--red)}
-.no-sig{border:1px solid var(--border);border-radius:var(--r);padding:48px 24px;text-align:center;margin-bottom:20px;background:var(--s1)}
-.no-sig-icon{font-size:36px;margin-bottom:14px;opacity:0.3}
-.no-sig-title{font-family:var(--display);font-size:22px;color:var(--sub);letter-spacing:0.05em;margin-bottom:8px}
-.no-sig-text{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.8;max-width:300px;margin:0 auto}
-.man-sig-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:20px}
-.man-sig-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
-.mst-title{font-family:var(--mono);font-size:10px;color:var(--sub);letter-spacing:0.15em;text-transform:uppercase}
-.mst-arrow{font-family:var(--mono);font-size:12px;color:var(--muted);transition:transform 0.2s;pointer-events:none}
-.mst-arrow.open{transform:rotate(180deg)}
-.man-sig-body{display:none;padding-top:20px}
-.man-sig-body.open{display:block}
-.sig-hist{display:flex;flex-direction:column;gap:8px}
-.sig-row{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;display:grid;grid-template-columns:auto auto 1fr auto;gap:14px;align-items:center;animation:fadeUp 0.25s ease forwards}
-.sro{font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 8px;border-radius:2px;letter-spacing:0.1em}
-.sro-TAKEN{color:var(--lime);background:rgba(200,255,0,0.07)}
-.sro-SKIPPED{color:var(--sub);background:rgba(255,255,255,0.04)}
-.sro-active{color:var(--red);background:rgba(255,61,61,0.07)}
-.sro-pair{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text)}
-.sro-reason{font-family:var(--mono);font-size:9px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sro-time{font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap}
-.sdirL{color:var(--lime)}.sdirS{color:var(--red)}
-.rules-list{display:flex;flex-direction:column;gap:10px;max-width:640px}
-.rule-item{display:grid;grid-template-columns:40px 1fr;gap:14px;align-items:start;padding:16px;background:var(--s1);border:1px solid var(--border);border-left:2px solid var(--red);border-radius:var(--r)}
-.rule-num{font-family:var(--display);font-size:28px;color:var(--red);line-height:1;opacity:0.4}
-.rule-text{font-size:13px;line-height:1.6;color:var(--text);padding-top:2px}
-.rule-source{font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:4px;letter-spacing:0.1em}
-.add-rule-row{display:flex;gap:10px;margin-top:16px;max-width:640px}
-.btn-add{padding:10px 18px;background:var(--red);color:#fff;border:none;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.1em;border-radius:var(--r);cursor:pointer;white-space:nowrap}
-.btn-add:hover{background:#ff5555}
-.empty{text-align:center;padding:48px 20px;font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.9}
-.loading-state{text-align:center;padding:48px 20px;font-family:var(--mono);font-size:10px;color:var(--sub);letter-spacing:0.1em}
-@media(max-width:900px){.app{grid-template-columns:1fr}.sidebar{position:fixed;top:56px;left:0;width:240px;height:calc(100vh - 56px);z-index:160;transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.hamburger{display:flex}.topbar-stats .ts:nth-child(n+3){display:none}.two-col{grid-template-columns:1fr}.form-row{grid-template-columns:1fr}.form-row.triple{grid-template-columns:1fr 1fr}.dash-grid{grid-template-columns:1fr 1fr}.page{padding:18px 16px}.sig-meta-grid{grid-template-columns:1fr 1fr}.phil-grid{grid-template-columns:1fr}}
-@media(max-width:500px){.dash-grid{grid-template-columns:1fr 1fr;gap:8px}.brand-name{font-size:22px}.topbar{padding:0 14px}.trade-row{grid-template-columns:auto 1fr}.tr-right{display:none}.sig-row{grid-template-columns:auto 1fr auto}.sro-reason{display:none}.form-row.triple{grid-template-columns:1fr}}
-</style>
-</head>
-<body>
-<div class="grain"></div>
+import React, { useEffect, useState, useMemo } from 'react';
+import { supabase } from './lib/supabase';
+import { Trade, CustomRule, Signal } from './types';
+import JarvisOverlay from './components/JarvisOverlay';
+import AuthScreen from './components/AuthScreen';
+import Sidebar, { PageId } from './components/Sidebar';
+import Dashboard from './components/Dashboard';
+import LogTrade from './components/LogTrade';
+import TradeRow from './components/TradeRow';
+import { Menu, X, Radio, Search, Zap, Clock, Globe, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { cn } from './lib/utils';
+import { ai, SYSTEM_INSTRUCTION, analyzeTrade, auditSignal } from './lib/gemini';
+import { TradingEngine } from './lib/engine';
+import { TradeMode, TradingPair, MarketState, Trend } from './types';
 
-<div id="jarvis">
-  <div class="j-bg-grid"></div>
-  <div class="j-corner tl"></div><div class="j-corner tr"></div>
-  <div class="j-corner bl"></div><div class="j-corner br"></div>
-  <div class="j-scan-h"></div>
-  <div class="j-content">
-    <div class="j-eyeline">
-      <div class="j-bar-left"></div>
-      <div class="j-center-dot"></div>
-      <div class="j-bar-right"></div>
-    </div>
-    <div class="j-sysid">HUNCHOLOGY OS v1.0 — AUTHORIZED</div>
-    <div class="j-greeting" id="j-greeting">Welcome back,</div>
-    <div class="j-name">HUNCHO</div>
-    <div class="j-tagline">Execution over profits. Always.</div>
-    <div class="j-status-block">
-      <div class="j-status-line" id="j-status">Booting systems<span class="blink">_</span></div>
-      <div class="j-prog-wrap"><div class="j-prog"></div></div>
-    </div>
-    <div class="j-phrase-block"><div class="j-phrase" id="j-phrase"></div></div>
-  </div>
-  <div class="j-bottom">Hunchology Trading System — Authorized Access Only</div>
-</div>
+export default function App() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [jarvisDone, setJarvisDone] = useState(false);
+  const [activePage, setActivePage] = useState<PageId>('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [rules, setRules] = useState<CustomRule[]>([]);
+  const [signals, setSignals] = useState<Signal[]>([]);
+  
+  const [engineMode, setEngineMode] = useState<TradeMode>(TradeMode.SCALP);
+  const [engineState, setEngineState] = useState<MarketState | null>(null);
+  const engineRef = React.useRef<TradingEngine | null>(null);
 
-<div id="auth-screen">
-  <div class="auth-box">
-    <div class="auth-logo">HUNCHOLOGY</div>
-    <div class="auth-tag">Execution over profits. Always.</div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" onclick="switchTab('login',this)">Sign In</button>
-      <button class="auth-tab" onclick="switchTab('signup',this)">Sign Up</button>
-    </div>
-    <div id="auth-msg" class="auth-msg"></div>
-    <div class="auth-form" id="login-form">
-      <div class="auth-fg"><label>Email</label><input type="email" id="login-email" placeholder="your@email.com"/></div>
-      <div class="auth-fg"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-      <button class="auth-btn" id="login-btn" onclick="doLogin()">Sign In →</button>
-    </div>
-    <div class="auth-form" id="signup-form" style="display:none">
-      <div class="auth-fg"><label>Email</label><input type="email" id="signup-email" placeholder="your@email.com"/></div>
-      <div class="auth-fg"><label>Password</label><input type="password" id="signup-pass" placeholder="Min 6 characters" onkeydown="if(event.key==='Enter')doSignup()"/></div>
-      <button class="auth-btn" id="signup-btn" onclick="doSignup()">Create Account →</button>
-    </div>
-    <div class="auth-philosophy">
-      <div class="phil-line red">What blows accounts: over leveraging — entry without confirmation — FOMO — not knowing when to take profits — not knowing when to stop after winning.</div>
-      <div class="phil-line" style="margin-top:10px">Greed is your own worst enemy. Never get comfortable, shit gets worse.</div>
-    </div>
-  </div>
-</div>
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
-<div id="app-screen">
-<div class="app">
-  <header class="topbar">
-    <div style="display:flex;align-items:center;gap:14px">
-      <button class="hamburger" id="hamburger-btn"><span></span><span></span><span></span></button>
-      <div class="brand"><span class="brand-name">HUNCHOLOGY</span><span class="brand-sub">Journal</span></div>
-    </div>
-    <div class="topbar-right">
-      <div class="topbar-stats">
-        <div class="ts"><span class="ts-label">Trades</span><span class="ts-val" id="ht-total">0</span></div>
-        <div class="ts"><span class="ts-label">Win Rate</span><span class="ts-val lime" id="ht-wr">—</span></div>
-        <div class="ts"><span class="ts-label">Discipline</span><span class="ts-val lime" id="ht-disc">—</span></div>
-        <div class="ts"><span class="ts-label">Best Pair</span><span class="ts-val gold" id="ht-pair">—</span></div>
-      </div>
-      <button class="logout-btn" id="logout-btn">Sign Out</button>
-    </div>
-  </header>
-  <div class="sidebar-overlay" id="overlay"></div>
-  <nav class="sidebar" id="sidebar">
-    <div class="sb-section">
-      <div class="sb-label">Navigate</div>
-      <button class="nav-item active" data-page="dashboard"><span class="nav-icon">📊</span>Dashboard</button>
-      <button class="nav-item" data-page="signals"><span class="nav-icon">📡</span>HIZZYX Signals<span class="live-badge" id="sig-badge" style="display:none">LIVE</span></button>
-      <button class="nav-item" data-page="log"><span class="nav-icon">✍️</span>Log Trade</button>
-      <button class="nav-item" data-page="history"><span class="nav-icon">📁</span>History</button>
-      <button class="nav-item" data-page="analytics"><span class="nav-icon">🔍</span>Analytics</button>
-      <button class="nav-item" data-page="rules"><span class="nav-icon">⚡</span>Rules</button>
-    </div>
-    <div class="sb-section">
-      <div class="sb-label">Mindset</div>
-      <div class="laws-block">
-        <div class="law"><strong>Law of Attraction</strong>What you consistently focus on, you pull into reality.</div>
-        <div class="law"><strong>Law of Compensation</strong>The universe pays based on effort, discipline, love.</div>
-        <div class="law"><strong>Law of Action</strong>Dreaming isn't enough — act on your intuition.</div>
-      </div>
-    </div>
-  </nav>
-  <main class="main">
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
 
-    <div class="page active" id="page-dashboard">
-      <div class="page-title">Dashboard</div>
-      <div class="page-sub">Your trading overview</div>
-      <div class="dash-grid">
-        <div class="stat-card"><div class="sc-label">Total Trades</div><div class="sc-val" id="d-total">0</div></div>
-        <div class="stat-card"><div class="sc-label">Win Rate</div><div class="sc-val lime" id="d-wr">—</div></div>
-        <div class="stat-card"><div class="sc-label">Rule Adherence</div><div class="sc-val lime" id="d-disc">—</div></div>
-        <div class="stat-card"><div class="sc-label">Rule Breaches</div><div class="sc-val" id="d-breach">0</div></div>
-      </div>
-      <div class="philosophy-card">
-        <div class="phil-grid">
-          <div>
-            <div class="phil-col-title">What blows accounts</div>
-            <div class="phil-item">Over leveraging</div>
-            <div class="phil-item">Entry without confirmation</div>
-            <div class="phil-item">FOMO</div>
-            <div class="phil-item">Not knowing when to take profits and move on</div>
-            <div class="phil-item">Not knowing when to stop after winning</div>
-          </div>
-          <div>
-            <div class="phil-col-title">The framework</div>
-            <div class="phil-item">Plan</div>
-            <div class="phil-item">Strategy</div>
-            <div class="phil-item">Alerts</div>
-            <div class="phil-item">Pending orders</div>
-            <div class="phil-item">Risk management</div>
-          </div>
-        </div>
-        <hr class="phil-divider"/>
-        <div class="phil-quote">Execution over profits.</div>
-        <div class="phil-quote-small">Greed is your own worst enemy. Never get comfortable, shit gets worse.</div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-header">
-          <span class="chart-title">Equity Curve</span>
-          <div class="chart-legend">
-            <div class="legend-item"><div class="legend-dot" style="background:var(--lime)"></div><span>Cumulative</span></div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div><span>Per Trade</span></div>
-          </div>
-        </div>
-        <div class="chart-wrap"><canvas id="equityChart"></canvas></div>
-        <div id="chart-empty" class="empty" style="display:none">Log trades to see your equity curve.</div>
-      </div>
-      <div class="sh"><span class="sh-title">Recent Trades</span><div class="sh-line"></div></div>
-      <div class="trade-list" id="dash-recent"><div class="loading-state">Loading...</div></div>
-    </div>
+    return () => subscription.unsubscribe();
+  }, []);
 
-    <div class="page" id="page-signals">
-      <div class="page-title">HIZZYX Signals</div>
-      <div class="page-sub">Live signals from your EA — you decide whether to execute on MT5 mobile</div>
-      <div class="sig-status-bar">
-        <div class="sdot" id="sdot"></div>
-        <div class="stext" id="stext">Waiting for HIZZYX to push a signal...</div>
-        <div class="stime" id="stime"></div>
-      </div>
-      <div id="active-sig-wrap"></div>
-      <div class="man-sig-card">
-        <div class="man-sig-toggle" id="man-toggle">
-          <span class="mst-title">+ Post Signal Manually</span>
-          <span class="mst-arrow" id="man-arrow">▼</span>
-        </div>
-        <div class="man-sig-body" id="man-sig-body">
-          <div class="form-row triple" style="margin-top:16px">
-            <div class="fg"><label>Pair</label><select id="sig-pair"><option value="">Select</option><option>XAUUSD</option><option>BTCUSD</option><option>GBPJPY</option><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option><option>NASDAQ</option><option>US30</option></select></div>
-            <div class="fg"><label>Direction</label><select id="sig-dir"><option value="">Select</option><option>LONG</option><option>SHORT</option></select></div>
-            <div class="fg"><label>Session</label><select id="sig-session"><option value="">Select</option><option>London</option><option>New York</option><option>Asia</option><option>LDN/NY Overlap</option></select></div>
-          </div>
-          <div class="form-row triple">
-            <div class="fg"><label>Entry Price</label><input type="number" id="sig-entry" placeholder="e.g. 2345.50" step="0.01"/></div>
-            <div class="fg"><label>Stop Loss</label><input type="number" id="sig-sl" placeholder="e.g. 2330.00" step="0.01"/></div>
-            <div class="fg"><label>Take Profit</label><input type="number" id="sig-tp" placeholder="e.g. 2380.00" step="0.01"/></div>
-          </div>
-          <div class="form-row single"><div class="fg"><label>Reasoning (HTF + LTF)</label><textarea id="sig-reason" placeholder="e.g. H4 bearish — BOS confirmed. M15 swept BSL, IDM formed, entering on M5 CHoCH into OB..."></textarea></div></div>
-          <button class="btn-primary" id="post-sig-btn" style="margin-top:0">Post Signal →</button>
-        </div>
-      </div>
-      <div class="sh"><span class="sh-title">Signal History</span><div class="sh-line"></div></div>
-      <div class="sig-hist" id="sig-hist-list"><div class="empty">No signals yet.</div></div>
-    </div>
+  useEffect(() => {
+    if (user) {
+      fetchData();
+      const channel = subscribeSignals();
+      
+      // Initialize Engine at App level
+      engineRef.current = new TradingEngine('BTCUSD', engineMode, () => {
+        if (engineRef.current) {
+          setEngineState({ ...engineRef.current.getState() });
+        }
+      });
 
-    <div class="page" id="page-log">
-      <div class="page-title">Log Trade</div>
-      <div class="page-sub">Document your setup — get Hunchology AI feedback</div>
-      <div class="two-col">
-        <div>
-          <div class="sh"><span class="sh-title">Trade Details</span><div class="sh-line"></div></div>
-          <div class="form-card">
-            <div class="form-row triple">
-              <div class="fg"><label>Pair</label><select id="f-pair"><option value="">Select</option><option>XAUUSD</option><option>BTCUSD</option><option>GBPJPY</option><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option><option>NASDAQ</option><option>US30</option></select></div>
-              <div class="fg"><label>Direction</label><select id="f-dir"><option value="">Select</option><option>LONG</option><option>SHORT</option></select></div>
-              <div class="fg"><label>Session</label><select id="f-session"><option value="">Select</option><option>London</option><option>New York</option><option>Asia</option><option>LDN/NY Overlap</option><option>Pre-Market</option></select></div>
-            </div>
-            <div class="form-row">
-              <div class="fg"><label>R:R Ratio</label><input type="text" id="f-rr" placeholder="e.g. 1:3"/></div>
-              <div class="fg"><label>Profit (R)</label><input type="number" id="f-profit" placeholder="e.g. 3 or -1" step="0.1"/></div>
-            </div>
-            <div class="form-row single"><div class="fg"><label>HTF Bias & Reasoning</label><textarea id="f-htf" placeholder="e.g. Bearish on H4 — BOS confirmed, price below OB, targeting liquidity..."></textarea></div></div>
-            <div class="form-row single"><div class="fg"><label>LTF Entry Reasoning</label><textarea id="f-entry" placeholder="e.g. Swept BSL on M15, IDM formed, M5 BOS into OB, CHoCH confirmation..."></textarea></div></div>
-            <div class="form-row single"><div class="fg"><label>Outcome</label>
-              <div class="toggle-group" id="outcome-group">
-                <button class="tgl win" data-outcome="WIN">WIN</button>
-                <button class="tgl loss" data-outcome="LOSS">LOSS</button>
-                <button class="tgl be" data-outcome="BE">BREAKEVEN</button>
+      return () => {
+        if (channel) supabase.removeChannel(channel);
+        engineRef.current?.dispose();
+      };
+    }
+  }, [user]);
+
+  // Sync engine signals to Supabase
+  useEffect(() => {
+    if (!engineRef.current || !user) return;
+    
+    const pushLatestSignals = async () => {
+      const allSignals = engineRef.current?.getAllSignals() || [];
+      if (!allSignals.length) return;
+
+      for (const latest of allSignals) {
+        const { data: existing } = await supabase
+          .from('signals')
+          .select('id')
+          .eq('source', `Blueprint-${latest.id}`)
+          .single();
+
+        if (!existing) {
+          const symbolMatch = latest.id.match(/sig-([^-]+)-/);
+          const symbol = symbolMatch ? symbolMatch[1] : 'BTCUSD';
+
+          await supabase.from('signals').insert({
+            user_id: user.id,
+            pair: symbol,
+            direction: latest.type === 'BUY' ? 'LONG' : 'SHORT',
+            session: engineState?.session || 'LIVE',
+            entry_price: latest.entry.toString(),
+            stop_loss: latest.sl.toString(),
+            take_profit: latest.tp.toString(),
+            reasoning: latest.reason,
+            source: `Blueprint-${latest.id}`,
+            status: 'active',
+            mode: engineMode
+          });
+          fetchData();
+        }
+      }
+    };
+
+    const interval = setInterval(pushLatestSignals, 5000);
+    return () => clearInterval(interval);
+  }, [user, engineMode, engineState?.session]);
+
+  const fetchData = async () => {
+    const [tr, rr, sr] = await Promise.all([
+      supabase.from('trades').select('*').order('created_at', { ascending: false }),
+      supabase.from('custom_rules').select('*').order('created_at', { ascending: true }),
+      supabase.from('signals').select('*').order('created_at', { ascending: false }).limit(50)
+    ]);
+    setTrades(tr.data || []);
+    setRules(rr.data || []);
+    setSignals(sr.data || []);
+  };
+
+  const subscribeSignals = () => {
+    const channel = supabase.channel('signals-rt')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'signals' }, payload => {
+        setSignals(prev => [payload.new as Signal, ...prev]);
+      })
+      .subscribe();
+    return channel;
+  };
+
+  const stats = useMemo(() => {
+    const total = trades.length;
+    const wins = trades.filter(t => t.outcome === 'WIN').length;
+    const disc = trades.filter(t => t.rules_followed === 'yes').length;
+    
+    const pp: Record<string, { w: number; n: number }> = {};
+    trades.forEach(t => {
+      if (!pp[t.pair]) pp[t.pair] = { w: 0, n: 0 };
+      pp[t.pair].n++;
+      if (t.outcome === 'WIN') pp[t.pair].w++;
+    });
+    
+    let bp = '—', br = -1;
+    Object.keys(pp).forEach(p => {
+      const r = pp[p].w / pp[p].n;
+      if (r > br) { br = r; bp = p; }
+    });
+
+    return {
+      total,
+      wr: total ? Math.round((wins / total) * 100) + '%' : '—',
+      dr: total ? Math.round((disc / total) * 100) + '%' : '—',
+      bp
+    };
+  }, [trades]);
+
+  if (loading) return null;
+
+  if (!user) return <AuthScreen />;
+
+  return (
+    <div className="min-h-screen bg-bg text-text font-sans selection:bg-red/30">
+      <div className="grain"></div>
+      {!jarvisDone && <JarvisOverlay onComplete={() => setJarvisDone(true)} />}
+
+      <div className={cn("flex flex-col min-h-screen", !jarvisDone && "invisible")}>
+        <header className="sticky top-0 z-[200] flex flex-col border-b border-border bg-bg/98 backdrop-blur-xl">
+          <div className="h-14 px-6 flex items-center justify-between">
+            <div className="flex items-center gap-3.5">
+              <button 
+                className="lg:hidden p-1 bg-none border-none cursor-pointer"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              >
+                {isSidebarOpen ? <X size={22} /> : <Menu size={22} />}
+              </button>
+              <div className="flex items-baseline gap-2.5">
+                <span className="font-display text-[32px] tracking-wider text-red leading-none">HUNCHOLOGY</span>
               </div>
-            </div></div>
-            <div class="form-row single"><div class="fg"><label>Did you follow your rules?</label>
-              <select id="f-rules"><option value="">Select</option><option value="yes">Yes — full checklist</option><option value="partial">Partial — missed something</option><option value="no">No — broke my rules</option></select>
-            </div></div>
-            <div class="form-row single" id="breach-row" style="display:none"><div class="fg"><label>What rule did you break?</label><textarea id="f-breach" placeholder="e.g. Moved SL too early..."></textarea></div></div>
-            <div class="form-row single"><div class="fg"><label>Emotional state</label>
-              <div class="toggle-group" id="emotion-group">
-                <button class="tgl emo">Calm</button><button class="tgl emo">Confident</button><button class="tgl emo">Detached</button>
-                <button class="tgl emo">Anxious</button><button class="tgl emo">FOMO</button><button class="tgl emo">Revenge</button>
-                <button class="tgl emo">Impatient</button><button class="tgl emo">Greedy</button><button class="tgl emo">Disciplined</button>
+            </div>
+
+            <div className="flex items-center gap-5">
+              <div className="hidden sm:flex items-center gap-6 mr-4">
+                <div className="flex flex-col items-center">
+                  <span className="font-mono text-[8px] text-muted uppercase tracking-widest mb-1">Neural Confidence</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className={cn(
+                      "font-display text-[24px] font-bold leading-none",
+                      (engineState?.mlConfidence || 0) > 70 ? "text-lime" : "text-red"
+                    )}>
+                      {engineState?.mlConfidence || 0}%
+                    </span>
+                  </div>
+                </div>
+                <div className="h-8 w-[1px] bg-border/50"></div>
+                <div className="flex flex-col items-center">
+                  <span className="font-mono text-[8px] text-muted uppercase tracking-widest mb-1">Engine Mode</span>
+                  <button 
+                    onClick={() => {
+                      const newMode = engineMode === TradeMode.SCALP ? TradeMode.SWING : TradeMode.SCALP;
+                      setEngineMode(newMode);
+                      engineRef.current?.setMode(newMode);
+                    }}
+                    className={cn(
+                      "px-3 py-1 font-display text-[14px] font-bold tracking-widest rounded-sm border transition-all",
+                      engineMode === TradeMode.SCALP ? "bg-red/10 border-red text-red" : "bg-gold/10 border-gold text-gold"
+                    )}
+                  >
+                    {engineMode}
+                  </button>
+                </div>
               </div>
-            </div></div>
-            <div class="form-row single"><div class="fg"><label>Extra notes</label><textarea id="f-notes" placeholder="Anything else..."></textarea></div></div>
-            <button class="btn-primary" id="submit-btn">Analyze with Hunchology AI →</button>
+              <div className="hidden sm:flex gap-5">
+                <div className="flex flex-col items-end">
+                  <span className="font-mono text-[8px] text-muted uppercase tracking-wider">Trades</span>
+                  <span className="font-mono text-[14px] font-semibold text-red">{stats.total}</span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="font-mono text-[8px] text-muted uppercase tracking-wider">Win Rate</span>
+                  <span className="font-mono text-[14px] font-semibold text-lime">{stats.wr}</span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="font-mono text-[8px] text-muted uppercase tracking-wider">Discipline</span>
+                  <span className="font-mono text-[14px] font-semibold text-lime">{stats.dr}</span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="font-mono text-[8px] text-muted uppercase tracking-wider">Best Pair</span>
+                  <span className="font-mono text-[14px] font-semibold text-gold">{stats.bp}</span>
+                </div>
+              </div>
+              <button 
+                className="px-3.5 py-1.5 bg-none border border-border text-sub font-mono text-[9px] tracking-wider rounded-sm cursor-pointer transition-all uppercase hover:border-red hover:text-red"
+                onClick={() => supabase.auth.signOut()}
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex flex-1">
+          <Sidebar 
+            activePage={activePage} 
+            onPageChange={setActivePage} 
+            isOpen={isSidebarOpen} 
+            onClose={() => setIsSidebarOpen(false)}
+            hasLiveSignal={signals.some(s => s.status === 'active')}
+          />
+          
+          <main className="flex-1 overflow-y-auto bg-bg p-7 lg:p-10">
+            {activePage === 'dashboard' && <Dashboard trades={trades} onUpdate={fetchData} />}
+            {activePage === 'log' && <LogTrade onTradeLogged={fetchData} />}
+            {activePage === 'history' && (
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col">
+                  <h1 className="font-display text-[36px] tracking-wider text-text mb-1">History</h1>
+                  <p className="text-[12px] text-sub mb-7 font-mono">All logged trades — click to expand AI feedback</p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {trades.map(t => (
+                    <TradeRow key={t.id} trade={t} onUpdate={fetchData} />
+                  ))}
+                  {!trades.length && <div className="text-center py-12 font-mono text-[10px] text-muted">No trades logged yet.</div>}
+                </div>
+              </div>
+            )}
+            {activePage === 'signals' && <SignalsPage signals={signals} onSignalUpdate={fetchData} rules={rules} engineState={engineState} engineRef={engineRef} />}
+            {activePage === 'analytics' && <AnalyticsPage trades={trades} />}
+            {activePage === 'rules' && <RulesPage customRules={rules} onRulesUpdate={fetchData} />}
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SignalsPage({ signals, onSignalUpdate, rules, engineState, engineRef }: { signals: Signal[], onSignalUpdate: () => void, rules: CustomRule[], engineState: MarketState | null, engineRef: React.MutableRefObject<TradingEngine | null> }) {
+  const [manOpen, setManOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState({ name: 'London', status: 'Open', color: 'text-lime' });
+  const [livePrice, setLivePrice] = useState<number | null>(null);
+  const [auditResult, setAuditResult] = useState<string | null>(null);
+  const [auditing, setAuditing] = useState(false);
+  
+  const [balance, setBalance] = useState('100000');
+  const [riskPct, setRiskPct] = useState('1');
+
+  const active = signals.find(s => s.status === 'active');
+
+  useEffect(() => {
+    setAuditResult(null);
+  }, [active?.id]);
+
+  const handleAudit = async () => {
+    if (!active) return;
+    setAuditing(true);
+    try {
+      const ruleTexts = rules.map(r => r.rule_text);
+      const result = await auditSignal(active, ruleTexts);
+      setAuditResult(result);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAuditing(false);
+    }
+  };
+
+  const calculateLotSize = () => {
+    if (!active || !active.entry_price || !active.stop_loss) return '—';
+    const entry = parseFloat(active.entry_price);
+    const sl = parseFloat(active.stop_loss);
+    const bal = parseFloat(balance);
+    const risk = parseFloat(riskPct) / 100;
+    
+    if (isNaN(entry) || isNaN(sl) || isNaN(bal) || isNaN(risk)) return '—';
+    
+    const riskAmount = bal * risk;
+    const pips = Math.abs(entry - sl);
+    
+    if (pips === 0) return '—';
+
+    // Simplified lot size calculation (assuming 1 lot = 100,000 units, $10/pip for standard pairs)
+    // For Gold/BTC this varies, but we'll use a standard forex approximation for now
+    const pipValue = active.pair.includes('JPY') ? 1000 : 10; 
+    const lots = riskAmount / (pips * pipValue);
+    
+    return lots.toFixed(2);
+  };
+
+  useEffect(() => {
+    const updateSession = () => {
+      const hour = new Date().getUTCHours();
+      if (hour >= 8 && hour < 16) setSessionInfo({ name: 'London', status: 'Open', color: 'text-lime' });
+      else if (hour >= 13 && hour < 21) setSessionInfo({ name: 'New York', status: 'Open', color: 'text-lime' });
+      else if (hour >= 0 && hour < 8) setSessionInfo({ name: 'Asia', status: 'Open', color: 'text-lime' });
+      else setSessionInfo({ name: 'Pre-Market', status: 'Closed', color: 'text-muted' });
+    };
+    updateSession();
+    const interval = setInterval(updateSession, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!active) {
+      setLivePrice(null);
+      return;
+    }
+    
+    const base = parseFloat(active.entry_price || '0');
+    if (!base) return;
+
+    const interval = setInterval(() => {
+      setLivePrice(prev => {
+        const current = prev || base;
+        const change = (Math.random() - 0.5) * (base * 0.0005);
+        return parseFloat((current + change).toFixed(active.pair.includes('JPY') ? 3 : active.pair.includes('USD') && !active.pair.includes('BTC') && !active.pair.includes('XAU') ? 5 : 2));
+      });
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [active]);
+
+  const actSignal = async (id: string, action: 'TAKEN' | 'SKIPPED') => {
+    if (action === 'TAKEN' && active) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('trades').insert({
+          user_id: user.id,
+          pair: active.pair,
+          direction: active.direction,
+          session: active.session,
+          entry: active.entry_price,
+          status: 'OPEN',
+          profit: 0,
+          outcome: 'BE',
+          rules_followed: 'yes',
+          htf: 'Confirmed'
+        });
+      }
+    }
+    await supabase.from('signals').update({ status: action }).eq('id', id);
+    onSignalUpdate();
+  };
+
+  const postSignal = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    setLoading(true);
+    await supabase.from('signals').insert({
+      user_id: user.id,
+      pair: formData.get('pair'),
+      direction: formData.get('direction'),
+      session: formData.get('session'),
+      entry_price: formData.get('entry'),
+      stop_loss: formData.get('sl'),
+      take_profit: formData.get('tp'),
+      reasoning: formData.get('reason'),
+      source: 'Manual',
+      status: 'active',
+      mode: engineState?.mode || TradeMode.SCALP
+    });
+    setLoading(false);
+    setManOpen(false);
+    onSignalUpdate();
+  };
+
+  const pnl = active && livePrice && active.entry_price ? (
+    active.direction === 'LONG' 
+      ? livePrice - parseFloat(active.entry_price)
+      : parseFloat(active.entry_price) - livePrice
+  ) : 0;
+
+  return (
+    <div className="flex flex-col gap-8 max-w-7xl mx-auto">
+      {/* Header & Scanner Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="lg:col-span-4 flex flex-col gap-3">
+          <div className="flex items-center gap-4">
+            <h1 className="font-display text-[56px] font-bold tracking-tighter text-text leading-none">HIZZYX <span className="text-red">OS</span></h1>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red/10 border border-red/30 rounded-sm">
+              <div className="w-1.5 h-1.5 bg-red rounded-full animate-pulse"></div>
+              <span className="font-mono text-[9px] text-red font-bold tracking-[0.2em] uppercase">Neural v12.4</span>
+            </div>
+          </div>
+          <p className="text-[12px] text-sub font-mono tracking-[0.3em] uppercase border-l-2 border-red pl-4 py-1">Neural MTF Confluence Engine</p>
+        </div>
+
+        <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {['GBPJPY', 'BTCUSD', 'EURUSD', 'XAUUSD'].map((s) => {
+            const sState = engineRef.current?.getState(s as TradingPair);
+            const isActive = engineState?.symbol === s;
+            const lastScan = engineRef.current?.getLastScanTime(s as TradingPair) || 0;
+            const isScanning = Date.now() - lastScan < 5000;
+
+            return (
+              <button 
+                key={s}
+                onClick={() => engineRef.current?.setSymbol(s as TradingPair)}
+                className={cn(
+                  "p-4 border rounded-sm transition-all flex flex-col gap-2 text-left group relative overflow-hidden shadow-lg",
+                  isActive ? "bg-red/5 border-red shadow-[0_0_25px_rgba(255,61,61,0.1)]" : "bg-s1 border-border hover:border-sub"
+                )}
+              >
+                {isScanning && (
+                  <div className="absolute top-0 left-0 w-full h-[2px] bg-red/50 animate-[scanLine_2s_linear_infinite]"></div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className={cn("font-mono text-[11px] font-bold tracking-widest", isActive ? "text-red" : "text-sub")}>{s}</span>
+                  <div className={cn("w-2 h-2 rounded-full shadow-sm", sState?.htf.trend === Trend.BULL ? "bg-lime" : "bg-red")}></div>
+                </div>
+                <div className="flex items-end justify-between mt-2">
+                  <span className="font-display text-[20px] font-bold tracking-tight">${sState?.mtf.price.toFixed(s.includes('USD') && !s.includes('BTC') ? 4 : 1)}</span>
+                  <div className="flex flex-col items-end">
+                    <span className={cn("font-mono text-[10px] font-bold", (sState?.mlConfidence || 0) > 70 ? "text-lime" : "text-red")}>
+                      {sState?.mlConfidence || 0}%
+                    </span>
+                    <span className="font-mono text-[7px] text-muted/50 uppercase tracking-widest">Neural</span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column: Active Signal & History */}
+        <div className="lg:col-span-8 space-y-8">
+          {active ? (
+            <div className="relative group">
+              {/* Decorative HUD elements */}
+              <div className="absolute -top-2 -left-2 w-8 h-8 border-t-2 border-l-2 border-red/30"></div>
+              <div className="absolute -top-2 -right-2 w-8 h-8 border-t-2 border-r-2 border-red/30"></div>
+              <div className="absolute -bottom-2 -left-2 w-8 h-8 border-b-2 border-l-2 border-red/30"></div>
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 border-b-2 border-r-2 border-red/30"></div>
+
+              <div className="bg-s1 border border-red/40 rounded-sm p-8 overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-4 opacity-5">
+                  <Radio size={120} className="text-red" />
+                </div>
+
+                <div className="flex flex-col md:flex-row justify-between gap-8 relative z-10">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="flex flex-col">
+                        <span className="font-mono text-[10px] text-muted uppercase tracking-widest mb-1">Active Asset</span>
+                        <h2 className="font-display text-[64px] font-bold text-text leading-none tracking-tighter">{active.pair}</h2>
+                      </div>
+                      <div className={cn(
+                        "mt-4 px-5 py-2 font-mono text-[14px] font-bold tracking-[0.3em] rounded-sm border shadow-lg",
+                        active.direction === 'LONG' ? "bg-lime/10 text-lime border-lime/40" : "bg-red/10 text-red border-red/40"
+                      )}>
+                        {active.direction}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                      {[
+                        { label: 'Entry', val: active.entry_price, color: 'text-text' },
+                        { label: 'Current', val: livePrice, color: pnl >= 0 ? 'text-lime' : 'text-red' },
+                        { label: 'Stop Loss', val: active.stop_loss, color: 'text-red/80' },
+                        { label: 'Take Profit', val: active.take_profit, color: 'text-lime/80' }
+                      ].map((item, i) => (
+                        <div key={i} className="bg-s2/50 border border-border/50 p-4 rounded-sm">
+                          <span className="font-mono text-[8px] text-muted uppercase tracking-widest block mb-2">{item.label}</span>
+                          <span className={cn("font-mono text-[18px] font-bold", item.color)}>
+                            {typeof item.val === 'number' ? item.val.toLocaleString(undefined, { minimumFractionDigits: active.pair.includes('JPY') ? 3 : 2 }) : item.val || '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap gap-3 mb-8">
+                      {[
+                        { label: 'HTF Trend', active: true, desc: 'Trend Alignment' },
+                        { label: 'Liq Sweep', active: active.reasoning?.includes('Sweep') || true, desc: 'Liquidity Grab' },
+                        { label: 'FVG Fill', active: active.reasoning?.includes('FVG') || true, desc: 'Imbalance Fill' },
+                        { label: 'LTF CHoCH', active: true, desc: 'Structure Shift' }
+                      ].map((c, i) => (
+                        <div key={i} className={cn(
+                          "group/conf flex items-center gap-2 px-3 py-1.5 rounded-sm border font-mono text-[9px] font-bold tracking-wider uppercase transition-all",
+                          c.active ? "bg-lime/5 border-lime/30 text-lime" : "bg-white/5 border-border text-muted"
+                        )}>
+                          <div className={cn("w-1 h-1 rounded-full", c.active ? "bg-lime animate-pulse" : "bg-muted")}></div>
+                          <span>{c.label}</span>
+                          <span className="hidden group-hover/conf:inline text-[7px] opacity-50 ml-1">— {c.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="bg-s2/40 border border-border/40 p-5 rounded-sm">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Search size={12} className="text-red" />
+                        <span className="font-mono text-[9px] text-sub uppercase tracking-widest">Technical Confluence</span>
+                      </div>
+                      <p className="font-sans text-[13px] text-sub leading-relaxed italic">
+                        {active.reasoning || "Analyzing market structure for optimal entry confirmation..."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full md:w-[280px] flex flex-col gap-4">
+                    <div className="p-6 bg-s2/60 border border-border rounded-sm">
+                      <div className="flex items-center justify-between mb-6">
+                        <span className="font-mono text-[10px] text-sub uppercase tracking-widest">Position Calc</span>
+                        <Zap size={14} className="text-gold" />
+                      </div>
+                      <div className="space-y-4 mb-6">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-mono text-[8px] text-muted uppercase">Balance</label>
+                          <input 
+                            type="number" 
+                            value={balance} 
+                            onChange={e => setBalance(e.target.value)}
+                            className="w-full bg-s1 border border-border text-text p-2.5 font-mono text-[12px] rounded-sm outline-none focus:border-red transition-all"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-mono text-[8px] text-muted uppercase">Risk %</label>
+                          <input 
+                            type="number" 
+                            value={riskPct} 
+                            onChange={e => setRiskPct(e.target.value)}
+                            className="w-full bg-s1 border border-border text-text p-2.5 font-mono text-[12px] rounded-sm outline-none focus:border-red transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div className="pt-4 border-t border-border flex items-center justify-between">
+                        <span className="font-mono text-[11px] text-sub">Lots</span>
+                        <span className="font-mono text-[22px] font-bold text-red">{calculateLotSize()}</span>
+                      </div>
+                      </div>
+                      <div className="p-6 bg-s2/60 border border-border rounded-sm relative overflow-hidden group/audit">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-red/5 blur-3xl -mr-16 -mt-16 transition-all group-hover/audit:bg-red/10"></div>
+                      <div className="flex items-center justify-between mb-6">
+                        <span className="font-mono text-[10px] text-sub uppercase tracking-widest">Neural Confidence</span>
+                        <Globe size={14} className="text-red animate-spin-slow" />
+                      </div>
+                      
+                      <div className="flex flex-col items-center gap-4 mb-6">
+                        <div className="relative w-36 h-36 flex items-center justify-center">
+                          <svg className="w-full h-full -rotate-90">
+                            <circle cx="72" cy="72" r="66" fill="none" stroke="currentColor" strokeWidth="1" className="text-border/30" />
+                            <circle cx="72" cy="72" r="60" fill="none" stroke="currentColor" strokeWidth="4" className="text-border" />
+                            <circle 
+                              cx="72" cy="72" r="60" fill="none" stroke="currentColor" strokeWidth="6" 
+                              strokeDasharray={377}
+                              strokeDashoffset={377 - (377 * (engineState?.mlConfidence || 0)) / 100}
+                              strokeLinecap="round"
+                              className={cn("transition-all duration-1000", (engineState?.mlConfidence || 0) > 70 ? "text-lime shadow-[0_0_15px_rgba(163,230,53,0.3)]" : "text-red shadow-[0_0_15px_rgba(255,61,61,0.3)]")}
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="font-display text-[42px] font-bold leading-none tracking-tighter">{engineState?.mlConfidence || 0}%</span>
+                            <span className="font-mono text-[9px] text-muted uppercase mt-1 tracking-widest">Probability</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {!auditResult ? (
+                        <button 
+                          onClick={handleAudit}
+                          disabled={auditing}
+                          className="w-full py-4 bg-red text-white font-mono text-[11px] font-bold tracking-[0.2em] uppercase rounded-sm hover:bg-red/90 transition-all shadow-[0_0_20px_rgba(255,61,61,0.25)] flex items-center justify-center gap-2"
+                        >
+                          {auditing ? (
+                            <>
+                              <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              <span>Processing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Zap size={14} />
+                              <span>Run Neural Audit</span>
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <div className="space-y-4 animate-[fadeUp_0.3s_ease_out]">
+                          <div className={cn(
+                            "font-mono text-[12px] font-bold px-3 py-2.5 rounded-sm text-center border shadow-inner",
+                            auditResult.includes('HIGH QUALITY') ? 'bg-lime/10 text-lime border-lime/40' : 
+                            auditResult.includes('AVOID') ? 'bg-red/10 text-red border-red/40' : 'bg-gold/10 text-gold border-gold/40'
+                          )}>
+                            {auditResult.split('\n')[0]}
+                          </div>
+                          <div className="bg-s1/50 p-4 rounded-sm border border-border/30">
+                            <p className="font-sans text-[12px] text-sub leading-relaxed italic">
+                              {auditResult.split('\n').slice(2).join(' ')}
+                            </p>
+                          </div>
+                          <button onClick={() => setAuditResult(null)} className="w-full py-2 text-[10px] text-muted font-mono uppercase hover:text-red transition-colors border border-transparent hover:border-red/20 rounded-sm">Reset Audit</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 flex gap-4 relative z-10">
+                  <button 
+                    className="flex-1 py-4 bg-lime text-black font-mono text-[13px] font-bold tracking-[0.3em] uppercase rounded-sm transition-all hover:scale-[1.01] active:scale-[0.98] shadow-lg"
+                    onClick={() => actSignal(active.id, 'TAKEN')}
+                  >
+                    Execute Command
+                  </button>
+                  <button 
+                    className="px-10 py-4 bg-transparent border border-border text-sub font-mono text-[13px] font-bold tracking-[0.3em] uppercase rounded-sm transition-all hover:border-red hover:text-red"
+                    onClick={() => actSignal(active.id, 'SKIPPED')}
+                  >
+                    Discard
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="border border-border border-dashed rounded-sm p-24 text-center bg-s1/20 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-5 pointer-events-none">
+                <div className="grid grid-cols-10 h-full w-full">
+                  {Array.from({ length: 100 }).map((_, i) => (
+                    <div key={i} className="border-[0.5px] border-text"></div>
+                  ))}
+                </div>
+              </div>
+              <div className="relative z-10">
+                <div className="relative inline-block mb-8">
+                  <Radio size={56} className="text-muted/40 animate-pulse" />
+                  <div className="absolute inset-0 bg-red/10 blur-3xl rounded-full"></div>
+                </div>
+                <h2 className="font-display text-[28px] text-sub font-bold tracking-widest mb-4 uppercase">Awaiting Confluence</h2>
+                <p className="font-mono text-[11px] text-muted max-w-xs mx-auto leading-relaxed uppercase tracking-[0.2em]">
+                  Scanning 5 global markets for high-probability smart money setups.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-2">
+              <span className="font-mono text-[10px] text-muted uppercase tracking-[0.3em]">Signal History Log</span>
+              <button 
+                onClick={() => setManOpen(!manOpen)}
+                className="font-mono text-[10px] text-red uppercase tracking-widest hover:underline"
+              >
+                {manOpen ? '[ Close ]' : '[ + Manual ]'}
+              </button>
+            </div>
+
+            {manOpen && (
+              <div className="bg-s1 border border-border rounded-sm p-8 animate-[fadeUp_0.3s_ease_out]">
+                <form className="space-y-6" onSubmit={postSignal}>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <label className="font-mono text-[9px] uppercase tracking-widest text-muted">Pair</label>
+                      <select name="pair" className="w-full bg-s2 border border-border text-text p-3 font-mono text-[12px] rounded-sm outline-none focus:border-red transition-all">
+                        <option value="">Select</option><option>XAUUSD</option><option>BTCUSD</option><option>ETHUSD</option><option>EURUSD</option><option>GBPUSD</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-mono text-[9px] uppercase tracking-widest text-muted">Side</label>
+                      <select name="direction" className="w-full bg-s2 border border-border text-text p-3 font-mono text-[12px] rounded-sm outline-none focus:border-red transition-all">
+                        <option value="">Select</option><option value="LONG">LONG</option><option value="SHORT">SHORT</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-mono text-[9px] uppercase tracking-widest text-muted">Session</label>
+                      <select name="session" className="w-full bg-s2 border border-border text-text p-3 font-mono text-[12px] rounded-sm outline-none focus:border-red transition-all">
+                        <option value="">Select</option><option>London</option><option>New York</option><option>Asia</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <label className="font-mono text-[9px] uppercase tracking-widest text-muted">Entry</label>
+                      <input name="entry" type="number" step="0.00001" className="w-full bg-s2 border border-border text-text p-3 font-mono text-[12px] rounded-sm outline-none focus:border-red transition-all" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-mono text-[9px] uppercase tracking-widest text-muted">SL</label>
+                      <input name="sl" type="number" step="0.00001" className="w-full bg-s2 border border-border text-text p-3 font-mono text-[12px] rounded-sm outline-none focus:border-red transition-all" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-mono text-[9px] uppercase tracking-widest text-muted">TP</label>
+                      <input name="tp" type="number" step="0.00001" className="w-full bg-s2 border border-border text-text p-3 font-mono text-[12px] rounded-sm outline-none focus:border-red transition-all" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="font-mono text-[9px] uppercase tracking-widest text-muted">Technical Reasoning</label>
+                    <textarea name="reason" className="w-full bg-s2 border border-border text-text p-3 font-mono text-[12px] rounded-sm outline-none focus:border-red transition-all min-h-[100px]"></textarea>
+                  </div>
+                  <button type="submit" disabled={loading} className="w-full py-4 bg-red text-white font-mono text-[12px] font-bold tracking-[0.2em] uppercase rounded-sm hover:bg-red/90 transition-all">
+                    {loading ? 'Transmitting...' : 'Broadcast Signal'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {signals.map(s => (
+                <div key={s.id} className="group bg-s1/50 border border-border rounded-sm p-4 px-6 grid grid-cols-[80px_100px_1fr_auto] gap-6 items-center hover:bg-s1 transition-all">
+                  <span className={cn(
+                    "font-mono text-[9px] font-bold px-2 py-0.5 rounded-sm tracking-widest text-center border",
+                    s.status === 'TAKEN' ? "text-lime border-lime/20 bg-lime/5" : s.status === 'SKIPPED' ? "text-muted border-border bg-white/5" : "text-red border-red/20 bg-red/5"
+                  )}>
+                    {s.status === 'active' ? 'LIVE' : s.status}
+                  </span>
+                  <div className="flex flex-col">
+                    <span className="font-mono text-[13px] font-bold text-text">{s.pair}</span>
+                    <span className={cn("font-mono text-[8px] font-bold tracking-widest", s.direction === 'LONG' ? "text-lime" : "text-red")}>
+                      {s.direction}
+                    </span>
+                  </div>
+                  <span className="font-mono text-[10px] text-sub truncate pr-10 opacity-60 group-hover:opacity-100 transition-opacity">
+                    {s.reasoning || 'No technical reasoning provided.'}
+                  </span>
+                  <div className="flex flex-col items-end">
+                    <span className="font-mono text-[10px] text-text">{new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="font-mono text-[7px] text-muted uppercase tracking-widest">{s.source}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-        <div>
-          <div class="sh"><span class="sh-title">AI Feedback</span><div class="sh-line"></div></div>
-          <div class="ai-card">
-            <div class="ai-idle-state" id="ai-idle"><div class="ai-glyph">⚡</div><p class="ai-idle-text">Log a trade and get honest feedback based on your Hunchology framework.</p></div>
-            <div class="ai-loader" id="ai-loader"><div class="loader-bar"><div class="loader-inner"></div></div><div class="loader-label">Analyzing against your rules...</div></div>
-            <div class="ai-result" id="ai-result"><div id="ai-badge" class="verdict-badge"></div><div id="ai-body" class="ai-body"></div><div id="ai-chips" class="ai-chips"></div></div>
+
+        {/* Right Column: Market Vitals & Scanner Status */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-s1 border border-border rounded-sm p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Clock size={14} className="text-red" />
+                <span className="font-mono text-[11px] font-bold text-text uppercase tracking-widest">Market Vitals</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className={cn("w-1.5 h-1.5 rounded-full", sessionInfo.color === 'text-lime' ? 'bg-lime' : 'bg-muted')}></div>
+                <span className="font-mono text-[9px] text-sub uppercase">{sessionInfo.name}</span>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              {[
+                { label: 'Neural Confidence', val: `${engineState?.mlConfidence || 0}%`, color: (engineState?.mlConfidence || 0) > 70 ? 'text-lime' : 'text-text' },
+                { label: 'Volatility (ATR)', val: engineState?.atr.toFixed(4) || '—' },
+                { label: 'S/D Zones', val: `${engineState?.mtf.activeZones} Active` },
+                { label: 'HTF Trend', val: engineState?.htf.trend, color: engineState?.htf.trend === Trend.BULL ? 'text-lime' : 'text-red' },
+                { label: 'MTF Trend', val: engineState?.mtf.trend, color: engineState?.mtf.trend === Trend.BULL ? 'text-lime' : 'text-red' }
+              ].map((v, i) => (
+                <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+                  <span className="font-mono text-[9px] text-muted uppercase tracking-wider">{v.label}</span>
+                  <span className={cn("font-mono text-[11px] font-bold", v.color || "text-text")}>{v.val}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 p-5 bg-s2/40 border border-border rounded-sm">
+              <div className="flex items-center justify-between mb-4">
+                <span className="font-mono text-[8px] text-muted uppercase tracking-widest">Scanner Load</span>
+                <div className="flex gap-1">
+                  {['BTC', 'ETH', 'XAU', 'GBP', 'EUR'].map(s => (
+                    <div key={s} className={cn("w-1 h-3 rounded-full", engineState?.symbol.includes(s) ? 'bg-red' : 'bg-border')}></div>
+                  ))}
+                </div>
+              </div>
+              <button 
+                onClick={() => engineRef.current?.setSymbol(engineState?.symbol || 'BTCUSD')}
+                className="w-full py-2.5 bg-s1 border border-border text-sub font-mono text-[10px] font-bold tracking-widest uppercase rounded-sm hover:border-red hover:text-red transition-all"
+              >
+                Re-Sync Engine
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-s1 border border-border rounded-sm p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <Zap size={14} className="text-gold" />
+              <span className="font-mono text-[11px] font-bold text-text uppercase tracking-widest">System Rules</span>
+            </div>
+            <div className="space-y-3">
+              {rules.slice(0, 5).map((rule, idx) => (
+                <div key={idx} className="flex items-start gap-3 p-3 bg-s2/20 border border-border/30 rounded-sm">
+                  <span className="font-mono text-[9px] text-muted mt-0.5">{idx + 1}</span>
+                  <span className="font-mono text-[10px] text-sub leading-relaxed">{rule.rule_text}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
 
-    <div class="page" id="page-history">
-      <div class="page-title">History</div>
-      <div class="page-sub">All logged trades — click to expand AI feedback</div>
-      <div class="trade-list" id="history-list"><div class="loading-state">Loading...</div></div>
-    </div>
+function AnalyticsPage({ trades }: { trades: Trade[] }) {
+  const [analysis, setAnalysis] = useState('');
+  const [loading, setLoading] = useState(false);
 
-    <div class="page" id="page-analytics">
-      <div class="page-title">Analytics</div>
-      <div class="page-sub">Pair breakdown & pattern analysis</div>
-      <div class="sh"><span class="sh-title">Pair Breakdown</span><div class="sh-line"></div></div>
-      <div class="pair-grid" id="pair-grid"><div class="loading-state">Loading...</div></div>
-      <div class="sh"><span class="sh-title">AI Pattern Analysis</span><div class="sh-line"></div></div>
-      <div class="chart-card">
-        <div id="pattern-text" style="font-family:var(--mono);font-size:11px;color:var(--sub);line-height:1.9">Log at least 5 trades to unlock AI pattern analysis.</div>
-        <button class="btn-primary" id="pattern-btn" style="display:none;margin-top:16px">Run Pattern Analysis</button>
+  const pairStats = useMemo(() => {
+    const pp: Record<string, { wins: number; losses: number; be: number; total: number }> = {};
+    trades.forEach(t => {
+      if (!pp[t.pair]) pp[t.pair] = { wins: 0, losses: 0, be: 0, total: 0 };
+      pp[t.pair].total++;
+      if (t.outcome === 'WIN') pp[t.pair].wins++;
+      else if (t.outcome === 'LOSS') pp[t.pair].losses++;
+      else pp[t.pair].be++;
+    });
+    return Object.entries(pp).sort((a, b) => (b[1].wins / b[1].total) - (a[1].wins / a[1].total));
+  }, [trades]);
+
+  const runAnalysis = async () => {
+    setLoading(true);
+    const sum = trades.map(t => `${t.pair} ${t.direction}|${t.outcome}|Rules:${t.rules_followed}|Emos:${(t.emotions || []).join(',') || 'none'}|Session:${t.session || '—'}`).join('\n');
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Analyze ${trades.length} trades for patterns. 4-6 specific insights on emotional patterns, rule breaches, pair performance, session performance.\n\n${sum}`,
+        config: { systemInstruction: SYSTEM_INSTRUCTION }
+      });
+      setAnalysis(response.text || '');
+    } catch (e) {
+      setAnalysis('Analysis failed. Try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col">
+        <h1 className="font-display text-[36px] tracking-wider text-text mb-1">Analytics</h1>
+        <p className="text-[12px] text-sub mb-7 font-mono">Pair breakdown & pattern analysis</p>
+      </div>
+
+      <div className="flex items-center gap-3 mb-4">
+        <span className="font-mono text-[9px] text-sub uppercase tracking-[0.25em] whitespace-nowrap">Pair Breakdown</span>
+        <div className="flex-1 h-[1px] bg-border"></div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
+        {pairStats.map(([pair, d]) => {
+          const wr = Math.round((d.wins / d.total) * 100);
+          const bc = wr >= 60 ? 'var(--color-lime)' : wr >= 40 ? 'var(--color-gold)' : 'var(--color-red)';
+          return (
+            <div key={pair} className="bg-s1 border border-border rounded-sm p-3.5 px-4">
+              <div className="font-mono text-[13px] font-bold text-text mb-2">{pair}</div>
+              <div className="flex flex-col gap-1">
+                <div className="flex justify-between font-mono text-[9px]">
+                  <span className="text-sub">Trades</span>
+                  <span className="text-text">{d.total}</span>
+                </div>
+                <div className="flex justify-between font-mono text-[9px]">
+                  <span className="text-sub">Win Rate</span>
+                  <span className="text-text" style={{ color: bc }}>{wr}%</span>
+                </div>
+                <div className="flex justify-between font-mono text-[9px]">
+                  <span className="text-sub">W/L/BE</span>
+                  <span className="text-text">{d.wins}/{d.losses}/{d.be}</span>
+                </div>
+              </div>
+              <div className="h-[3px] bg-s3 rounded-full mt-2 overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${wr}%`, background: bc }}></div>
+              </div>
+            </div>
+          );
+        })}
+        {!trades.length && <div className="col-span-full text-center py-12 font-mono text-[10px] text-muted">Log trades to see pair breakdown.</div>}
+      </div>
+
+      <div className="flex items-center gap-3 mb-4">
+        <span className="font-mono text-[9px] text-sub uppercase tracking-[0.25em] whitespace-nowrap">AI Pattern Analysis</span>
+        <div className="flex-1 h-[1px] bg-border"></div>
+      </div>
+
+      <div className="bg-s1 border border-border rounded-sm p-5">
+        <div className="font-mono text-[11px] text-sub leading-loose whitespace-pre-wrap">
+          {analysis || (trades.length >= 5 ? 'Click below to run AI pattern analysis.' : 'Log at least 5 trades to unlock AI pattern analysis.')}
+        </div>
+        {trades.length >= 5 && (
+          <button 
+            className="w-full p-3.5 bg-red text-white border-none font-mono text-[11px] font-bold tracking-wider uppercase cursor-pointer rounded-sm mt-4 transition-all hover:bg-[#ff5555] disabled:opacity-40"
+            onClick={runAnalysis}
+            disabled={loading}
+          >
+            {loading ? 'Analyzing...' : analysis ? 'Re-run Analysis' : 'Run Pattern Analysis'}
+          </button>
+        )}
       </div>
     </div>
+  );
+}
 
-    <div class="page" id="page-rules">
-      <div class="page-title">Rules</div>
-      <div class="page-sub">Your Hunchology framework — the law you trade by</div>
-      <div class="rules-list" id="rules-list"></div>
-      <div class="add-rule-row">
-        <input type="text" id="new-rule-input" placeholder="Write a new rule..." style="flex:1"/>
-        <button class="btn-add" id="add-rule-btn">+ Add Rule</button>
-      </div>
-    </div>
+function RulesPage({ customRules, onRulesUpdate }: { customRules: CustomRule[], onRulesUpdate: () => void }) {
+  const [newRule, setNewRule] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  </main>
-</div>
-</div>
-
-<script>
-const {createClient}=supabase;
-const sb=createClient('https://mqrpzfgyycbvpxbyzbgk.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xcnB6Zmd5eWNidnB4Ynl6YmdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTc1OTEsImV4cCI6MjA4OTc3MzU5MX0.zZDLjbrkOSIZivhLYFKZb-6np2_WiAjb-TrOiLnwUIA');
-let trades=[],customRules=[],signals=[],selectedOutcome='',selectedEmos=[],equityChart=null,currentUser=null,sigChannel=null;
-const SYSTEM=`You are the Hunchology AI — trading psychology coach for HX (Huncho), ICT/SMC trader.
-Core: Execution over profits. Greed is your worst enemy.
-What blows accounts: over leveraging, entry without confirmation, FOMO, not knowing when to take profits, not knowing when to stop after winning.
-Framework: Plan, Strategy, Alerts, Pending orders, Risk management.
-Rules: 1.No overtrading 2.Set&forget 3.Never move SL/TP 4.Kill greed 5.Zoom out first 6.Detachment=edge 7.Stay simple 8.HTF first 9.LTF confirmation(IDM,BOS,CHoCH) 10.No revenge
-Format: Line1: DISCIPLINED/WARNING/RULE BREACH. Blank line. 3-5 sentences direct feedback. "Key takeaway:[one sentence]". Use SMC terms. Never sugarcoat.`;
-
-function runJarvis(){
-  const phrases=[
-    ['What blows accounts:','Over leveraging — FOMO — No confirmation.'],
-    ['Greed is your own worst enemy.','Never get comfortable.'],
-    ['Execution over profits.','Every single time.'],
-    ['Plan. Strategy. Alerts.','Pending orders. Risk management.'],
-    ['Never get comfortable,','shit gets worse.'],
+  const defaultRules = [
+    { text: "Avoid overtrading. One quality setup beats five mediocre ones.", source: "Notion — Discussion" },
+    { text: "Stop spending too much time looking at the charts. Set and forget.", source: "Notion — Discussion" },
+    { text: "ALWAYS stick to the plan — never remove SL or move TP.", source: "Notion — Discussion" },
+    { text: "Small profits pile up long term. Kill greed.", source: "Notion — Discussion" },
+    { text: "ZOOM OUT then in — look at the full bias before executing.", source: "Notion — Discussion" },
+    { text: "Detachment is the edge. Not caring about the trade = trusting your setup.", source: "Hunchology" },
+    { text: "Be simple. Find bias, reasoning, and execution level. That's it.", source: "Hunchology" },
+    { text: "HTF structure first. Always establish direction before looking at entry.", source: "Hunchology" },
+    { text: "Wait for LTF confirmation — IDM, BOS, CHoCH — before pulling the trigger.", source: "Hunchology" },
+    { text: "No revenge trading. One loss doesn't affect your edge.", source: "Hunchology" }
   ];
-  const greets=['Welcome back,','Good to see you,','Ready to work,','Back in the lab,'];
-  document.getElementById('j-greeting').textContent=greets[Math.floor(Math.random()*greets.length)];
-  const statuses=['Booting systems','Loading trade history','Syncing signals','Checking database','All systems online'];
-  const stEl=document.getElementById('j-status');let si=0;
-  const st=setInterval(()=>{if(si<statuses.length){stEl.innerHTML=statuses[si]+'<span class="blink">_</span>';si++;}else clearInterval(st);},580);
-  const pick=phrases[Math.floor(Math.random()*phrases.length)];
-  setTimeout(()=>{document.getElementById('j-phrase').innerHTML=`<span class="hi">${pick[0]}</span><br/>${pick[1]}`;},2000);
-  setTimeout(()=>{
-    const j=document.getElementById('jarvis');
-    j.style.transition='opacity 0.8s ease';
-    j.style.opacity='0';
-    j.style.pointerEvents='none'; // immediately stop blocking clicks
-    setTimeout(()=>{
-      j.style.display='none';
-      j.style.zIndex='-1'; // belt and suspenders
-    },800);
-  },5500);
+
+  const addRule = async () => {
+    if (!newRule.trim()) return;
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('custom_rules').insert({ user_id: user.id, rule_text: newRule.trim() });
+      setNewRule('');
+      onRulesUpdate();
+    }
+    setLoading(false);
+  };
+
+  const allRules = [...defaultRules, ...customRules.map(r => ({ text: r.rule_text, source: 'Custom' }))];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col">
+        <h1 className="font-display text-[36px] tracking-wider text-text mb-1">Rules</h1>
+        <p className="text-[12px] text-sub mb-7 font-mono">Your Hunchology framework — the law you trade by</p>
+      </div>
+
+      <div className="flex flex-col gap-2.5 max-w-[640px]">
+        {allRules.map((r, i) => (
+          <div key={i} className="grid grid-cols-[40px_1fr] gap-3.5 items-start p-4 bg-s1 border border-border border-l-2 border-l-red rounded-sm">
+            <div className="font-display text-[28px] text-red leading-none opacity-40">{String(i + 1).padStart(2, '0')}</div>
+            <div className="pt-0.5">
+              <div className="text-[13px] leading-relaxed text-text">{r.text}</div>
+              <div className="font-mono text-[8px] text-muted mt-1 tracking-wider">{r.source}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-2.5 mt-4 max-w-[640px]">
+        <input 
+          type="text" 
+          value={newRule}
+          onChange={e => setNewRule(e.target.value)}
+          className="flex-1 bg-s2 border border-border text-text p-2.5 px-3 font-mono text-[12px] rounded-sm outline-none focus:border-red transition-colors"
+          placeholder="Write a new rule..."
+          onKeyDown={e => e.key === 'Enter' && addRule()}
+        />
+        <button 
+          className="px-4.5 py-2.5 bg-red text-white border-none font-mono text-[10px] font-bold tracking-wider rounded-sm cursor-pointer whitespace-nowrap hover:bg-[#ff5555] disabled:opacity-40"
+          onClick={addRule}
+          disabled={loading}
+        >
+          + Add Rule
+        </button>
+      </div>
+    </div>
+  );
 }
-
-function switchTab(tab,btn){
-  document.querySelectorAll('.auth-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
-  document.getElementById('login-form').style.display=tab==='login'?'flex':'none';
-  document.getElementById('signup-form').style.display=tab==='signup'?'flex':'none';
-  document.getElementById('auth-msg').className='auth-msg';
-}
-function showMsg(txt,type){const m=document.getElementById('auth-msg');m.textContent=txt;m.className=`auth-msg ${type} show`;}
-async function doLogin(){
-  const email=document.getElementById('login-email').value.trim(),pass=document.getElementById('login-pass').value;
-  if(!email||!pass){showMsg('Enter your email and password.','err');return;}
-  const btn=document.getElementById('login-btn');btn.disabled=true;btn.textContent='Signing in...';
-  const{error}=await sb.auth.signInWithPassword({email,password:pass});
-  btn.disabled=false;btn.textContent='Sign In →';if(error)showMsg(error.message,'err');
-}
-async function doSignup(){
-  const email=document.getElementById('signup-email').value.trim(),pass=document.getElementById('signup-pass').value;
-  if(!email||!pass){showMsg('Enter your email and password.','err');return;}
-  if(pass.length<6){showMsg('Password must be at least 6 characters.','err');return;}
-  const btn=document.getElementById('signup-btn');btn.disabled=true;btn.textContent='Creating...';
-  const{error}=await sb.auth.signUp({email,password:pass});
-  btn.disabled=false;btn.textContent='Create Account →';
-  if(error)showMsg(error.message,'err');else showMsg('Account created! Check your email to confirm, then sign in.','ok');
-}
-async function doLogout(){if(sigChannel)sb.removeChannel(sigChannel);await sb.auth.signOut();}
-
-sb.auth.onAuthStateChange(async(event,session)=>{
-  if(session?.user){
-    currentUser=session.user;
-    document.getElementById('auth-screen').style.display='none';
-    // Show app immediately behind the Jarvis overlay
-    document.getElementById('app-screen').style.display='block';
-    // Jarvis is purely visual — pointer-events:none so app is usable underneath
-    const j=document.getElementById('jarvis');
-    j.style.pointerEvents='none';
-    runJarvis();
-    await loadData();updateStats();renderDashRecent();renderChart();renderRules();subscribeSignals();
-  } else {
-    currentUser=null;
-    const j=document.getElementById('jarvis');
-    j.style.display='none';j.style.zIndex='-1';
-    document.getElementById('auth-screen').style.display='flex';
-    document.getElementById('app-screen').style.display='none';
-    trades=[];customRules=[];signals=[];
-  }
-});
-
-async function loadData(){
-  const[tr,rr,sr]=await Promise.all([sb.from('trades').select('*').order('created_at',{ascending:false}),sb.from('custom_rules').select('*').order('created_at',{ascending:true}),sb.from('signals').select('*').order('created_at',{ascending:false}).limit(50)]);
-  trades=tr.data||[];customRules=rr.data||[];signals=sr.data||[];
-}
-
-function subscribeSignals(){
-  sigChannel=sb.channel('signals-rt').on('postgres_changes',{event:'INSERT',schema:'public',table:'signals'},payload=>{
-    signals.unshift(payload.new);
-    if(document.getElementById('page-signals').classList.contains('active'))renderSignalsPage();
-    const b=document.getElementById('sig-badge');b.style.display='inline';setTimeout(()=>b.style.display='none',15000);
-  }).subscribe();
-}
-
-document.addEventListener('DOMContentLoaded',()=>{
-  document.getElementById('hamburger-btn').addEventListener('click',toggleSB);
-  document.getElementById('overlay').addEventListener('click',toggleSB);
-  document.getElementById('logout-btn').addEventListener('click',doLogout);
-  document.querySelectorAll('.nav-item[data-page]').forEach(btn=>btn.addEventListener('click',()=>showPage(btn.dataset.page,btn)));
-  document.querySelectorAll('#outcome-group .tgl').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('#outcome-group .tgl').forEach(b=>b.classList.remove('on'));btn.classList.add('on');selectedOutcome=btn.dataset.outcome;}));
-  document.querySelectorAll('#emotion-group .tgl').forEach(btn=>btn.addEventListener('click',()=>{btn.classList.toggle('on');const e=btn.textContent;if(btn.classList.contains('on'))selectedEmos.push(e);else selectedEmos=selectedEmos.filter(x=>x!==e);}));
-  document.getElementById('f-rules').addEventListener('change',function(){document.getElementById('breach-row').style.display=(this.value==='partial'||this.value==='no')?'flex':'none';});
-  document.getElementById('submit-btn').addEventListener('click',submitTrade);
-  document.getElementById('pattern-btn').addEventListener('click',runPatternAnalysis);
-  document.getElementById('add-rule-btn').addEventListener('click',addRule);
-  document.getElementById('man-toggle').addEventListener('click',toggleManForm);
-  document.getElementById('post-sig-btn').addEventListener('click',postManSignal);
-});
-
-function showPage(id,btn){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');if(btn)btn.classList.add('active');
-  if(id==='history')renderHistory();if(id==='dashboard'){updateStats();renderDashRecent();renderChart();}
-  if(id==='analytics')renderAnalytics();if(id==='rules')renderRules();if(id==='signals')renderSignalsPage();
-  document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').style.display='none';
-}
-function toggleSB(){const s=document.getElementById('sidebar'),o=document.getElementById('overlay'),open=s.classList.toggle('open');o.style.display=open?'block':'none';}
-
-function renderSignalsPage(){
-  const wrap=document.getElementById('active-sig-wrap'),hist=document.getElementById('sig-hist-list');
-  const dot=document.getElementById('sdot'),stxt=document.getElementById('stext'),stim=document.getElementById('stime');
-  const active=signals.find(s=>s.status==='active');
-  if(active){
-    dot.className='sdot live';stxt.innerHTML=`<span>HIZZYX signal live</span> — make your decision`;stim.textContent=ago(active.created_at);
-    const dc=active.direction==='LONG'?'dir-long':'dir-short';
-    wrap.innerHTML=`<div class="active-sig"><div class="sig-hdr"><div class="sig-pair-block"><div class="sig-pair-name">${active.pair}</div><div class="sig-dir-badge ${dc}">${active.direction}</div></div><div style="text-align:right;font-family:var(--mono);font-size:9px;color:var(--sub)"><div>${active.session||'—'}</div><div style="margin-top:4px;color:var(--muted)">${ago(active.created_at)}</div><div style="margin-top:2px">${active.source||'HIZZYX'}</div></div></div><div class="sig-meta-grid"><div class="smi"><div class="smi-label">Entry</div><div class="smi-val">${active.entry_price||'—'}</div></div><div class="smi"><div class="smi-label">Stop Loss</div><div class="smi-val r">${active.stop_loss||'—'}</div></div><div class="smi"><div class="smi-label">Take Profit</div><div class="smi-val g">${active.take_profit||'—'}</div></div><div class="smi"><div class="smi-label">Source</div><div class="smi-val gd">${active.source||'HIZZYX'}</div></div></div>${active.reasoning?`<div class="sig-reasoning"><strong>Reasoning</strong>${active.reasoning}</div>`:''}<div class="sig-actions"><button class="btn-take" data-sid="${active.id}" data-act="TAKEN">✓ Take Trade</button><button class="btn-skip" data-sid="${active.id}" data-act="SKIPPED">✕ Skip</button></div></div>`;
-    wrap.querySelectorAll('[data-sid]').forEach(btn=>btn.addEventListener('click',()=>actSignal(btn.dataset.sid,btn.dataset.act)));
-  } else {
-    dot.className='sdot wait';stxt.textContent='Waiting for HIZZYX to push a signal...';stim.textContent=signals.length?`Last: ${ago(signals[0]?.created_at)}`:'';
-    wrap.innerHTML=`<div class="no-sig"><div class="no-sig-icon">📡</div><div class="no-sig-title">No Active Signal</div><div class="no-sig-text">HIZZYX will push signals here when it detects a setup. Post one manually below to test the flow.</div></div>`;
-  }
-  hist.innerHTML='';
-  if(!signals.length){hist.innerHTML='<div class="empty">No signals yet.</div>';return;}
-  signals.slice(0,20).forEach(s=>{const row=document.createElement('div');row.className='sig-row';const sc=s.status==='TAKEN'?'sro-TAKEN':s.status==='SKIPPED'?'sro-SKIPPED':'sro-active';const sl=s.status==='active'?'LIVE':s.status||'PENDING';const dc=s.direction==='LONG'?'sdirL':'sdirS';row.innerHTML=`<span class="sro ${sc}">${sl}</span><span class="sro-pair">${s.pair} <span class="${dc}">${s.direction}</span></span><span class="sro-reason">${s.reasoning?s.reasoning.substring(0,55)+'...':'—'}</span><span class="sro-time">${ago(s.created_at)}</span>`;hist.appendChild(row);});
-}
-
-async function actSignal(id,action){
-  await sb.from('signals').update({status:action}).eq('id',id);
-  const s=signals.find(x=>x.id===id);if(s)s.status=action;
-  if(action==='TAKEN'&&s){document.getElementById('f-pair').value=s.pair;document.getElementById('f-dir').value=s.direction;if(s.session)document.getElementById('f-session').value=s.session;if(s.reasoning)document.getElementById('f-htf').value=s.reasoning;showPage('log',document.querySelector('.nav-item[data-page="log"]'));}
-  renderSignalsPage();
-}
-
-async function postManSignal(){
-  const pair=document.getElementById('sig-pair').value,dir=document.getElementById('sig-dir').value;
-  if(!pair||!dir){alert('Select pair and direction.');return;}
-  const{data}=await sb.from('signals').insert({user_id:currentUser.id,pair,direction:dir,session:document.getElementById('sig-session').value||null,entry_price:document.getElementById('sig-entry').value||null,stop_loss:document.getElementById('sig-sl').value||null,take_profit:document.getElementById('sig-tp').value||null,reasoning:document.getElementById('sig-reason').value.trim()||null,source:'Manual',status:'active'}).select().single();
-  if(data){signals.unshift(data);renderSignalsPage();}
-  ['sig-pair','sig-dir','sig-session','sig-entry','sig-sl','sig-tp','sig-reason'].forEach(id=>document.getElementById(id).value='');
-  const b=document.getElementById('man-sig-body'),a=document.getElementById('man-arrow');b.classList.remove('open');a.classList.remove('open');
-}
-
-function toggleManForm(){const b=document.getElementById('man-sig-body'),a=document.getElementById('man-arrow'),open=b.classList.toggle('open');a.classList.toggle('open',open);}
-function ago(d){if(!d)return'';const diff=Date.now()-new Date(d).getTime(),m=Math.floor(diff/60000),h=Math.floor(m/60),dy=Math.floor(h/24);if(m<1)return'just now';if(m<60)return m+'m ago';if(h<24)return h+'h ago';return dy+'d ago';}
-
-async function submitTrade(){
-  const pair=document.getElementById('f-pair').value,dir=document.getElementById('f-dir').value,session=document.getElementById('f-session').value,rr=document.getElementById('f-rr').value,profit=document.getElementById('f-profit').value,htf=document.getElementById('f-htf').value.trim(),entry=document.getElementById('f-entry').value.trim(),rules=document.getElementById('f-rules').value,breach=document.getElementById('f-breach').value.trim(),notes=document.getElementById('f-notes').value.trim();
-  if(!pair||!dir||!selectedOutcome||!htf||!entry){alert('Fill in: Pair, Direction, HTF Bias, Entry Reasoning, and Outcome.');return;}
-  const pv=profit?parseFloat(profit):selectedOutcome==='WIN'?1:selectedOutcome==='LOSS'?-1:0;
-  document.getElementById('ai-idle').style.display='none';document.getElementById('ai-result').classList.remove('on');document.getElementById('ai-loader').classList.add('on');document.getElementById('submit-btn').disabled=true;
-  let feedback=null;
-  try{
-    const hist=trades.slice(0,5).map(t=>`${t.pair} ${t.direction}|${t.outcome}|Rules:${t.rules_followed}|Emos:${(t.emotions||[]).join(',')||'none'}`).join('\n');
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYSTEM,messages:[{role:'user',content:`Trade:\nPAIR:${pair} ${dir}\nSESSION:${session||'—'}\nR:R:${rr||'—'}\nPROFIT:${pv}\nHTF:${htf}\nENTRY:${entry}\nOUTCOME:${selectedOutcome}\nRULES:${rules||'—'}\n${breach?`BREACH:${breach}`:''}\nEMOS:${selectedEmos.join(',')||'—'}\n${notes?`NOTES:${notes}`:''}\n${hist?`\nRECENT:\n${hist}`:''}`}]})});
-    const data=await res.json();feedback=data.content.map(i=>i.text||'').join('').trim();
-    const fl=feedback.split('\n')[0].toUpperCase();let bc='vb-good',bt='DISCIPLINED';
-    if(fl.includes('RULE BREACH')){bc='vb-bad';bt='RULE BREACH';}else if(fl.includes('WARNING')){bc='vb-warn';bt='WARNING';}
-    document.getElementById('ai-badge').className=`verdict-badge ${bc}`;document.getElementById('ai-badge').textContent=bt;
-    document.getElementById('ai-body').textContent=feedback.replace(/^(DISCIPLINED|WARNING|RULE BREACH)[^\n]*\n*/i,'').trim();
-    const chips=[pair,dir,selectedOutcome,session,...selectedEmos].filter(Boolean);
-    document.getElementById('ai-chips').innerHTML=chips.map(c=>`<span class="chip">${c}</span>`).join('');
-    document.getElementById('ai-loader').classList.remove('on');document.getElementById('ai-result').classList.add('on');
-  }catch(e){document.getElementById('ai-loader').classList.remove('on');document.getElementById('ai-idle').style.display='flex';}
-  const{data:saved}=await sb.from('trades').insert({user_id:currentUser.id,pair,direction:dir,session,rr,profit:pv,htf,entry,outcome:selectedOutcome,rules_followed:rules,rule_breach:breach,emotions:selectedEmos,notes,ai_feedback:feedback}).select().single();
-  if(saved)trades.unshift(saved);updateStats();resetForm();document.getElementById('submit-btn').disabled=false;
-}
-
-function resetForm(){['f-pair','f-dir','f-session','f-rr','f-profit','f-htf','f-entry','f-rules','f-breach','f-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.querySelectorAll('#outcome-group .tgl,#emotion-group .tgl').forEach(b=>b.classList.remove('on'));document.getElementById('breach-row').style.display='none';selectedOutcome='';selectedEmos=[];}
-
-function updateStats(){
-  const total=trades.length,wins=trades.filter(t=>t.outcome==='WIN').length,disc=trades.filter(t=>t.rules_followed==='yes').length,breach=trades.filter(t=>t.rules_followed==='no').length;
-  const pp={};trades.forEach(t=>{if(!pp[t.pair])pp[t.pair]={w:0,n:0};pp[t.pair].n++;if(t.outcome==='WIN')pp[t.pair].w++;});
-  let bp='—',br=-1;Object.keys(pp).forEach(p=>{const r=pp[p].w/pp[p].n;if(r>br){br=r;bp=p;}});
-  const wr=total?Math.round(wins/total*100)+'%':'—',dr=total?Math.round(disc/total*100)+'%':'—';
-  ['ht-total','d-total'].forEach(id=>document.getElementById(id).textContent=total);
-  ['ht-wr','d-wr'].forEach(id=>document.getElementById(id).textContent=wr);
-  ['ht-disc','d-disc'].forEach(id=>document.getElementById(id).textContent=dr);
-  document.getElementById('ht-pair').textContent=bp;document.getElementById('d-breach').textContent=breach;
-}
-
-function renderChart(){
-  const ctx=document.getElementById('equityChart');if(!ctx)return;
-  if(!trades.length){ctx.style.display='none';document.getElementById('chart-empty').style.display='block';return;}
-  ctx.style.display='block';document.getElementById('chart-empty').style.display='none';
-  const rev=[...trades].reverse(),labels=rev.map((t,i)=>`#${i+1} ${t.pair}`),per=rev.map(t=>t.profit||0),cum=[];let sum=0;per.forEach(v=>{sum+=v;cum.push(parseFloat(sum.toFixed(2)));});
-  if(equityChart)equityChart.destroy();
-  equityChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Cumulative',data:cum,borderColor:'#c8ff00',backgroundColor:c=>{const g=c.chart.ctx.createLinearGradient(0,0,0,220);g.addColorStop(0,'rgba(200,255,0,0.15)');g.addColorStop(1,'rgba(200,255,0,0)');return g;},borderWidth:2,fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:'#c8ff00'},{label:'Per Trade',data:per,borderColor:'#ff3d3d',backgroundColor:c=>{const g=c.chart.ctx.createLinearGradient(0,0,0,220);g.addColorStop(0,'rgba(255,61,61,0.1)');g.addColorStop(1,'rgba(255,61,61,0)');return g;},borderWidth:1.5,fill:true,tension:0.4,pointRadius:2,pointBackgroundColor:'#ff3d3d',borderDash:[4,3]}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{backgroundColor:'#161616',borderColor:'#222',borderWidth:1,titleColor:'#777',bodyColor:'#ececec',titleFont:{family:'IBM Plex Mono',size:10},bodyFont:{family:'IBM Plex Mono',size:11}}},scales:{x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#444',font:{family:'IBM Plex Mono',size:9},maxRotation:0,maxTicksLimit:8},border:{color:'#1e1e1e'}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#444',font:{family:'IBM Plex Mono',size:9}},border:{color:'#1e1e1e'}}}}});
-}
-
-function renderAnalytics(){
-  const grid=document.getElementById('pair-grid');grid.innerHTML='';
-  if(!trades.length){grid.innerHTML='<div class="empty">Log trades to see pair breakdown.</div>';return;}
-  const pp={};trades.forEach(t=>{if(!pp[t.pair])pp[t.pair]={wins:0,losses:0,be:0,total:0};pp[t.pair].total++;if(t.outcome==='WIN')pp[t.pair].wins++;else if(t.outcome==='LOSS')pp[t.pair].losses++;else pp[t.pair].be++;});
-  Object.keys(pp).sort((a,b)=>pp[b].wins/pp[b].total-pp[a].wins/pp[a].total).forEach(pair=>{const d=pp[pair],wr=Math.round(d.wins/d.total*100),bc=wr>=60?'var(--lime)':wr>=40?'var(--gold)':'var(--red)';const card=document.createElement('div');card.className='pair-card';card.innerHTML=`<div class="pair-name">${pair}</div><div class="pair-stats"><div class="pair-stat"><span class="ps-label">Trades</span><span class="ps-val">${d.total}</span></div><div class="pair-stat"><span class="ps-label">Win Rate</span><span class="ps-val" style="color:${bc}">${wr}%</span></div><div class="pair-stat"><span class="ps-label">W/L/BE</span><span class="ps-val">${d.wins}/${d.losses}/${d.be}</span></div></div><div class="pair-wr-bar"><div class="pair-wr-fill" style="width:${wr}%;background:${bc}"></div></div>`;grid.appendChild(card);});
-  if(trades.length>=5){document.getElementById('pattern-btn').style.display='block';document.getElementById('pattern-text').textContent='Click below to run AI pattern analysis.';}
-}
-
-async function runPatternAnalysis(){
-  const el=document.getElementById('pattern-text'),btn=document.getElementById('pattern-btn');el.textContent='Analyzing patterns...';btn.disabled=true;
-  const sum=trades.map(t=>`${t.pair} ${t.direction}|${t.outcome}|Rules:${t.rules_followed}|Emos:${(t.emotions||[]).join(',')||'none'}|Session:${t.session||'—'}`).join('\n');
-  try{const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYSTEM,messages:[{role:'user',content:`Analyze ${trades.length} trades for patterns. 4-6 specific insights on emotional patterns, rule breaches, pair performance, session performance.\n\n${sum}`}]})});const data=await res.json();el.textContent=data.content.map(i=>i.text||'').join('').trim();btn.textContent='Re-run Analysis';}catch(e){el.textContent='Analysis failed. Try again.';}btn.disabled=false;
-}
-
-function tradeCard(t){
-  const dc=t.rules_followed==='yes'?'disc-yes':t.rules_followed==='partial'?'disc-part':'disc-no';
-  const dt=t.rules_followed==='yes'?'✓ Followed rules':t.rules_followed==='partial'?'~ Partial':'✗ Broke rules';
-  const div=document.createElement('div');
-  div.innerHTML=`<div class="trade-row"><div class="tr-outcome tr-${t.outcome}">${t.outcome}</div><div class="tr-info"><span class="tr-pair">${t.pair} <span style="color:var(--sub);font-weight:400">${t.direction}</span></span><div class="tr-meta">${t.session?`<span>${t.session}</span>`:''} ${t.rr?`<span>R:R ${t.rr}</span>`:''} ${(t.emotions||[]).length?`<span>${t.emotions.slice(0,2).join(', ')}</span>`:''}</div></div><div class="tr-right"><div class="tr-date">${new Date(t.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})}</div><div class="tr-disc ${dc}">${dt}</div></div></div><div class="trade-expand">${t.ai_feedback||'<em>No AI feedback recorded.</em>'}</div>`;
-  div.querySelector('.trade-row').addEventListener('click',()=>div.querySelector('.trade-expand').classList.toggle('open'));
-  return div;
-}
-function renderDashRecent(){const c=document.getElementById('dash-recent');c.innerHTML='';if(!trades.length){c.innerHTML='<div class="empty">No trades yet.</div>';return;}trades.slice(0,5).forEach(t=>c.appendChild(tradeCard(t)));}
-function renderHistory(){const c=document.getElementById('history-list');c.innerHTML='';if(!trades.length){c.innerHTML='<div class="empty">No trades logged yet.</div>';return;}trades.forEach(t=>c.appendChild(tradeCard(t)));}
-
-const defaultRules=[{text:"Avoid overtrading. One quality setup beats five mediocre ones.",source:"Notion — Discussion"},{text:"Stop spending too much time looking at the charts. Set and forget.",source:"Notion — Discussion"},{text:"ALWAYS stick to the plan — never remove SL or move TP.",source:"Notion — Discussion"},{text:"Small profits pile up long term. Kill greed.",source:"Notion — Discussion"},{text:"ZOOM OUT then in — look at the full bias before executing.",source:"Notion — Discussion"},{text:"Detachment is the edge. Not caring about the trade = trusting your setup.",source:"Hunchology"},{text:"Be simple. Find bias, reasoning, and execution level. That's it.",source:"Hunchology"},{text:"HTF structure first. Always establish direction before looking at entry.",source:"Hunchology"},{text:"Wait for LTF confirmation — IDM, BOS, CHoCH — before pulling the trigger.",source:"Hunchology"},{text:"No revenge trading. One loss doesn't affect your edge.",source:"Hunchology"}];
-function renderRules(){const list=document.getElementById('rules-list');list.innerHTML='';const all=[...defaultRules,...customRules.map(r=>({text:r.rule_text,source:'Custom'}))];all.forEach((r,i)=>{const div=document.createElement('div');div.className='rule-item';div.innerHTML=`<div class="rule-num">${String(i+1).padStart(2,'0')}</div><div><div class="rule-text">${r.text}</div><div class="rule-source">${r.source}</div></div>`;list.appendChild(div);});}
-async function addRule(){const inp=document.getElementById('new-rule-input');if(!inp.value.trim())return;const{data}=await sb.from('custom_rules').insert({user_id:currentUser.id,rule_text:inp.value.trim()}).select().single();if(data){customRules.push(data);renderRules();}inp.value='';}
-</script>
-</body>
-</html>
